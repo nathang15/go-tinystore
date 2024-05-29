@@ -1,5 +1,7 @@
 package store
 
+import "errors"
+
 type Node struct {
 	prev *Node
 	next *Node
@@ -28,14 +30,14 @@ func Init(capacity int) LRU {
 	return lru
 }
 
-func (lru *LRU) Get(key int) int {
+func (lru *LRU) Get(key int) (int, error) {
 
 	if node, existed := lru.cache[key]; existed {
 		lru.moveToHead(node)
-		return node.val
+		return node.val, nil
 	}
 
-	return -1
+	return -1, errors.New("element not found")
 }
 
 func (lru *LRU) Put(key int, value int) {
@@ -46,23 +48,21 @@ func (lru *LRU) Put(key int, value int) {
 		return
 	}
 
-	node := Node{prev: nil, next: nil, key: key, val: value}
+	node := Node{prev: lru.head, next: lru.head.next, key: key, val: value}
 
 	lru.cache[key] = &node
 
 	node.next = lru.head.next
 	lru.head.next.prev = &node
+
+	lru.head.next = &node
+	node.prev = lru.head
+
 	lru.size += 1
 
 	// evict if exceed capacity
 	if lru.size > lru.capacity {
-		dNode := lru.tail.prev
-		prev := dNode.prev
-		prev.next = lru.tail
-		lru.tail.prev = prev
-
-		delete(lru.cache, dNode.key)
-
+		lru.evict()
 		lru.size -= 1
 	}
 }
@@ -85,4 +85,13 @@ func (lru *LRU) moveToHead(node *Node) {
 	lru.head.next.prev = node
 	lru.head.next = node
 	node.prev = lru.head
+}
+
+func (lru *LRU) evict() {
+	node := lru.tail.prev
+	prev := node.prev
+	prev.next = lru.tail
+	lru.tail.prev = prev
+
+	delete(lru.cache, node.key)
 }
