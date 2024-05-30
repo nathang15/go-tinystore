@@ -19,10 +19,10 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// IdentityServiceClient is the client API for IdentityService service.
+// CacheServiceClient is the client API for CacheService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type IdentityServiceClient interface {
+type CacheServiceClient interface {
 	// Get/Put operations
 	Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error)
 	Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -37,140 +37,119 @@ type IdentityServiceClient interface {
 	UpdateVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error)
 	RequestSync(ctx context.Context, in *RequestSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SyncComplete(ctx context.Context, in *SyncCompleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Distributed checkpointing
-	RequestCheckpoint(ctx context.Context, in *CheckpointRequest, opts ...grpc.CallOption) (*GenericResponse, error)
-	NotifyCheckpointDone(ctx context.Context, in *CheckpointDoneRequest, opts ...grpc.CallOption) (*GenericResponse, error)
 }
 
-type identityServiceClient struct {
+type cacheServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewIdentityServiceClient(cc grpc.ClientConnInterface) IdentityServiceClient {
-	return &identityServiceClient{cc}
+func NewCacheServiceClient(cc grpc.ClientConnInterface) CacheServiceClient {
+	return &cacheServiceClient{cc}
 }
 
-func (c *identityServiceClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
+func (c *cacheServiceClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
 	out := new(GetResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *cacheServiceClient) Put(ctx context.Context, in *PutRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/Put", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/Put", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) GetPid(ctx context.Context, in *PidRequest, opts ...grpc.CallOption) (*PidResponse, error) {
+func (c *cacheServiceClient) GetPid(ctx context.Context, in *PidRequest, opts ...grpc.CallOption) (*PidResponse, error) {
 	out := new(PidResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/GetPid", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/GetPid", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) GetLeader(ctx context.Context, in *LeaderRequest, opts ...grpc.CallOption) (*LeaderResponse, error) {
+func (c *cacheServiceClient) GetLeader(ctx context.Context, in *LeaderRequest, opts ...grpc.CallOption) (*LeaderResponse, error) {
 	out := new(LeaderResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/GetLeader", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/GetLeader", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
+func (c *cacheServiceClient) GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
 	out := new(HeartbeatResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/GetHeartbeat", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/GetHeartbeat", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) UpdateLeader(ctx context.Context, in *NewLeaderAnnouncement, opts ...grpc.CallOption) (*GenericResponse, error) {
+func (c *cacheServiceClient) UpdateLeader(ctx context.Context, in *NewLeaderAnnouncement, opts ...grpc.CallOption) (*GenericResponse, error) {
 	out := new(GenericResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/UpdateLeader", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/UpdateLeader", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) RequestElection(ctx context.Context, in *ElectionRequest, opts ...grpc.CallOption) (*GenericResponse, error) {
+func (c *cacheServiceClient) RequestElection(ctx context.Context, in *ElectionRequest, opts ...grpc.CallOption) (*GenericResponse, error) {
 	out := new(GenericResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/RequestElection", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/RequestElection", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) GetVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error) {
+func (c *cacheServiceClient) GetVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error) {
 	out := new(VectorClockResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/GetVectorClock", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/GetVectorClock", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) UpdateVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error) {
+func (c *cacheServiceClient) UpdateVectorClock(ctx context.Context, in *VectorClockRequest, opts ...grpc.CallOption) (*VectorClockResponse, error) {
 	out := new(VectorClockResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/UpdateVectorClock", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/UpdateVectorClock", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) RequestSync(ctx context.Context, in *RequestSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *cacheServiceClient) RequestSync(ctx context.Context, in *RequestSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/RequestSync", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/RequestSync", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) SyncComplete(ctx context.Context, in *SyncCompleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *cacheServiceClient) SyncComplete(ctx context.Context, in *SyncCompleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/SyncComplete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/SyncComplete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *identityServiceClient) RequestCheckpoint(ctx context.Context, in *CheckpointRequest, opts ...grpc.CallOption) (*GenericResponse, error) {
-	out := new(GenericResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/RequestCheckpoint", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *identityServiceClient) NotifyCheckpointDone(ctx context.Context, in *CheckpointDoneRequest, opts ...grpc.CallOption) (*GenericResponse, error) {
-	out := new(GenericResponse)
-	err := c.cc.Invoke(ctx, "/pb.IdentityService/NotifyCheckpointDone", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// IdentityServiceServer is the server API for IdentityService service.
-// All implementations must embed UnimplementedIdentityServiceServer
+// CacheServiceServer is the server API for CacheService service.
+// All implementations must embed UnimplementedCacheServiceServer
 // for forward compatibility
-type IdentityServiceServer interface {
+type CacheServiceServer interface {
 	// Get/Put operations
 	Get(context.Context, *GetRequest) (*GetResponse, error)
 	Put(context.Context, *PutRequest) (*emptypb.Empty, error)
@@ -185,360 +164,307 @@ type IdentityServiceServer interface {
 	UpdateVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error)
 	RequestSync(context.Context, *RequestSyncRequest) (*emptypb.Empty, error)
 	SyncComplete(context.Context, *SyncCompleteRequest) (*emptypb.Empty, error)
-	// Distributed checkpointing
-	RequestCheckpoint(context.Context, *CheckpointRequest) (*GenericResponse, error)
-	NotifyCheckpointDone(context.Context, *CheckpointDoneRequest) (*GenericResponse, error)
-	mustEmbedUnimplementedIdentityServiceServer()
+	mustEmbedUnimplementedCacheServiceServer()
 }
 
-// UnimplementedIdentityServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedIdentityServiceServer struct {
+// UnimplementedCacheServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedCacheServiceServer struct {
 }
 
-func (UnimplementedIdentityServiceServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
+func (UnimplementedCacheServiceServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-func (UnimplementedIdentityServiceServer) Put(context.Context, *PutRequest) (*emptypb.Empty, error) {
+func (UnimplementedCacheServiceServer) Put(context.Context, *PutRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Put not implemented")
 }
-func (UnimplementedIdentityServiceServer) GetPid(context.Context, *PidRequest) (*PidResponse, error) {
+func (UnimplementedCacheServiceServer) GetPid(context.Context, *PidRequest) (*PidResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPid not implemented")
 }
-func (UnimplementedIdentityServiceServer) GetLeader(context.Context, *LeaderRequest) (*LeaderResponse, error) {
+func (UnimplementedCacheServiceServer) GetLeader(context.Context, *LeaderRequest) (*LeaderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLeader not implemented")
 }
-func (UnimplementedIdentityServiceServer) GetHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
+func (UnimplementedCacheServiceServer) GetHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHeartbeat not implemented")
 }
-func (UnimplementedIdentityServiceServer) UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error) {
+func (UnimplementedCacheServiceServer) UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateLeader not implemented")
 }
-func (UnimplementedIdentityServiceServer) RequestElection(context.Context, *ElectionRequest) (*GenericResponse, error) {
+func (UnimplementedCacheServiceServer) RequestElection(context.Context, *ElectionRequest) (*GenericResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestElection not implemented")
 }
-func (UnimplementedIdentityServiceServer) GetVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error) {
+func (UnimplementedCacheServiceServer) GetVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVectorClock not implemented")
 }
-func (UnimplementedIdentityServiceServer) UpdateVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error) {
+func (UnimplementedCacheServiceServer) UpdateVectorClock(context.Context, *VectorClockRequest) (*VectorClockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateVectorClock not implemented")
 }
-func (UnimplementedIdentityServiceServer) RequestSync(context.Context, *RequestSyncRequest) (*emptypb.Empty, error) {
+func (UnimplementedCacheServiceServer) RequestSync(context.Context, *RequestSyncRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestSync not implemented")
 }
-func (UnimplementedIdentityServiceServer) SyncComplete(context.Context, *SyncCompleteRequest) (*emptypb.Empty, error) {
+func (UnimplementedCacheServiceServer) SyncComplete(context.Context, *SyncCompleteRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SyncComplete not implemented")
 }
-func (UnimplementedIdentityServiceServer) RequestCheckpoint(context.Context, *CheckpointRequest) (*GenericResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RequestCheckpoint not implemented")
-}
-func (UnimplementedIdentityServiceServer) NotifyCheckpointDone(context.Context, *CheckpointDoneRequest) (*GenericResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method NotifyCheckpointDone not implemented")
-}
-func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
+func (UnimplementedCacheServiceServer) mustEmbedUnimplementedCacheServiceServer() {}
 
-// UnsafeIdentityServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to IdentityServiceServer will
+// UnsafeCacheServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CacheServiceServer will
 // result in compilation errors.
-type UnsafeIdentityServiceServer interface {
-	mustEmbedUnimplementedIdentityServiceServer()
+type UnsafeCacheServiceServer interface {
+	mustEmbedUnimplementedCacheServiceServer()
 }
 
-func RegisterIdentityServiceServer(s grpc.ServiceRegistrar, srv IdentityServiceServer) {
-	s.RegisterService(&IdentityService_ServiceDesc, srv)
+func RegisterCacheServiceServer(s grpc.ServiceRegistrar, srv CacheServiceServer) {
+	s.RegisterService(&CacheService_ServiceDesc, srv)
 }
 
-func _IdentityService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_Get_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).Get(ctx, in)
+		return srv.(CacheServiceServer).Get(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/Get",
+		FullMethod: "/pb.CacheService/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).Get(ctx, req.(*GetRequest))
+		return srv.(CacheServiceServer).Get(ctx, req.(*GetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_Put_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PutRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).Put(ctx, in)
+		return srv.(CacheServiceServer).Put(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/Put",
+		FullMethod: "/pb.CacheService/Put",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).Put(ctx, req.(*PutRequest))
+		return srv.(CacheServiceServer).Put(ctx, req.(*PutRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_GetPid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_GetPid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PidRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).GetPid(ctx, in)
+		return srv.(CacheServiceServer).GetPid(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/GetPid",
+		FullMethod: "/pb.CacheService/GetPid",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).GetPid(ctx, req.(*PidRequest))
+		return srv.(CacheServiceServer).GetPid(ctx, req.(*PidRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_GetLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_GetLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LeaderRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).GetLeader(ctx, in)
+		return srv.(CacheServiceServer).GetLeader(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/GetLeader",
+		FullMethod: "/pb.CacheService/GetLeader",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).GetLeader(ctx, req.(*LeaderRequest))
+		return srv.(CacheServiceServer).GetLeader(ctx, req.(*LeaderRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_GetHeartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_GetHeartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HeartbeatRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).GetHeartbeat(ctx, in)
+		return srv.(CacheServiceServer).GetHeartbeat(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/GetHeartbeat",
+		FullMethod: "/pb.CacheService/GetHeartbeat",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).GetHeartbeat(ctx, req.(*HeartbeatRequest))
+		return srv.(CacheServiceServer).GetHeartbeat(ctx, req.(*HeartbeatRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_UpdateLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_UpdateLeader_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(NewLeaderAnnouncement)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).UpdateLeader(ctx, in)
+		return srv.(CacheServiceServer).UpdateLeader(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/UpdateLeader",
+		FullMethod: "/pb.CacheService/UpdateLeader",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).UpdateLeader(ctx, req.(*NewLeaderAnnouncement))
+		return srv.(CacheServiceServer).UpdateLeader(ctx, req.(*NewLeaderAnnouncement))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_RequestElection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_RequestElection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ElectionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).RequestElection(ctx, in)
+		return srv.(CacheServiceServer).RequestElection(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/RequestElection",
+		FullMethod: "/pb.CacheService/RequestElection",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).RequestElection(ctx, req.(*ElectionRequest))
+		return srv.(CacheServiceServer).RequestElection(ctx, req.(*ElectionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_GetVectorClock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_GetVectorClock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(VectorClockRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).GetVectorClock(ctx, in)
+		return srv.(CacheServiceServer).GetVectorClock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/GetVectorClock",
+		FullMethod: "/pb.CacheService/GetVectorClock",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).GetVectorClock(ctx, req.(*VectorClockRequest))
+		return srv.(CacheServiceServer).GetVectorClock(ctx, req.(*VectorClockRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_UpdateVectorClock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_UpdateVectorClock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(VectorClockRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).UpdateVectorClock(ctx, in)
+		return srv.(CacheServiceServer).UpdateVectorClock(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/UpdateVectorClock",
+		FullMethod: "/pb.CacheService/UpdateVectorClock",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).UpdateVectorClock(ctx, req.(*VectorClockRequest))
+		return srv.(CacheServiceServer).UpdateVectorClock(ctx, req.(*VectorClockRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_RequestSync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_RequestSync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RequestSyncRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).RequestSync(ctx, in)
+		return srv.(CacheServiceServer).RequestSync(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/RequestSync",
+		FullMethod: "/pb.CacheService/RequestSync",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).RequestSync(ctx, req.(*RequestSyncRequest))
+		return srv.(CacheServiceServer).RequestSync(ctx, req.(*RequestSyncRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_SyncComplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _CacheService_SyncComplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SyncCompleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(IdentityServiceServer).SyncComplete(ctx, in)
+		return srv.(CacheServiceServer).SyncComplete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.IdentityService/SyncComplete",
+		FullMethod: "/pb.CacheService/SyncComplete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).SyncComplete(ctx, req.(*SyncCompleteRequest))
+		return srv.(CacheServiceServer).SyncComplete(ctx, req.(*SyncCompleteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _IdentityService_RequestCheckpoint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckpointRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(IdentityServiceServer).RequestCheckpoint(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.IdentityService/RequestCheckpoint",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).RequestCheckpoint(ctx, req.(*CheckpointRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _IdentityService_NotifyCheckpointDone_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckpointDoneRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(IdentityServiceServer).NotifyCheckpointDone(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/pb.IdentityService/NotifyCheckpointDone",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(IdentityServiceServer).NotifyCheckpointDone(ctx, req.(*CheckpointDoneRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
+// CacheService_ServiceDesc is the grpc.ServiceDesc for CacheService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var IdentityService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "pb.IdentityService",
-	HandlerType: (*IdentityServiceServer)(nil),
+var CacheService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "pb.CacheService",
+	HandlerType: (*CacheServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Get",
-			Handler:    _IdentityService_Get_Handler,
+			Handler:    _CacheService_Get_Handler,
 		},
 		{
 			MethodName: "Put",
-			Handler:    _IdentityService_Put_Handler,
+			Handler:    _CacheService_Put_Handler,
 		},
 		{
 			MethodName: "GetPid",
-			Handler:    _IdentityService_GetPid_Handler,
+			Handler:    _CacheService_GetPid_Handler,
 		},
 		{
 			MethodName: "GetLeader",
-			Handler:    _IdentityService_GetLeader_Handler,
+			Handler:    _CacheService_GetLeader_Handler,
 		},
 		{
 			MethodName: "GetHeartbeat",
-			Handler:    _IdentityService_GetHeartbeat_Handler,
+			Handler:    _CacheService_GetHeartbeat_Handler,
 		},
 		{
 			MethodName: "UpdateLeader",
-			Handler:    _IdentityService_UpdateLeader_Handler,
+			Handler:    _CacheService_UpdateLeader_Handler,
 		},
 		{
 			MethodName: "RequestElection",
-			Handler:    _IdentityService_RequestElection_Handler,
+			Handler:    _CacheService_RequestElection_Handler,
 		},
 		{
 			MethodName: "GetVectorClock",
-			Handler:    _IdentityService_GetVectorClock_Handler,
+			Handler:    _CacheService_GetVectorClock_Handler,
 		},
 		{
 			MethodName: "UpdateVectorClock",
-			Handler:    _IdentityService_UpdateVectorClock_Handler,
+			Handler:    _CacheService_UpdateVectorClock_Handler,
 		},
 		{
 			MethodName: "RequestSync",
-			Handler:    _IdentityService_RequestSync_Handler,
+			Handler:    _CacheService_RequestSync_Handler,
 		},
 		{
 			MethodName: "SyncComplete",
-			Handler:    _IdentityService_SyncComplete_Handler,
-		},
-		{
-			MethodName: "RequestCheckpoint",
-			Handler:    _IdentityService_RequestCheckpoint_Handler,
-		},
-		{
-			MethodName: "NotifyCheckpointDone",
-			Handler:    _IdentityService_NotifyCheckpointDone_Handler,
+			Handler:    _CacheService_SyncComplete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
