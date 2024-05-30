@@ -25,29 +25,24 @@ const (
 
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-func LoadNodesConfig(configFile string) (NodesInfo, error) {
-	file, err := os.ReadFile(configFile)
-	if err != nil {
-		return NodesInfo{}, err
+func LoadNodesConfig(configFile string) NodesInfo {
+	file, _ := os.ReadFile(configFile)
+	nodesInfo := NodesInfo{}
+	if err := json.Unmarshal([]byte(file), &nodesInfo); err != nil {
+		return NodesInfo{}
 	}
-	var nodesInfo NodesInfo
-	if err := json.Unmarshal(file, &nodesInfo); err != nil {
-		return NodesInfo{}, err
-	}
-	return nodesInfo, nil
+	return nodesInfo
 }
 
-func GetCurrentNodeId(config NodesInfo) (int32, error) {
-	host, err := os.Hostname()
-	if err != nil {
-		return ErrNodeNotFound, err
-	}
+func GetCurrentNodeId(config NodesInfo) int32 {
+	host, _ := os.Hostname()
+
 	for _, node := range config.Nodes {
 		if node.Host == host {
-			return node.Id, nil
+			return node.Id
 		}
 	}
-	return ErrNodeNotFound, errors.New("current host not found in info")
+	return -1
 }
 
 func GetRandomNode(info NodesInfo) (Node, error) {
