@@ -42,14 +42,6 @@ message NewLeaderAnnouncement {
     int32 leader_id = 1;
 }
 
-message VectorClockRequest {
-    repeated int32 vector = 1;
-}
-
-message VectorClockResponse {
-    repeated int32 vector = 1;
-}
-
 message PidRequest {
     int32 caller_pid = 1;
 }
@@ -85,8 +77,6 @@ service CacheService {
     rpc RequestElection(ElectionRequest) returns (GenericResponse);
 
     // Replication and synchronization
-    rpc GetVectorClock(VectorClockRequest) returns (VectorClockResponse);
-    rpc UpdateVectorClock(VectorClockRequest) returns (VectorClockResponse);
     rpc RequestSync(RequestSyncRequest) returns (google.protobuf.Empty);
     rpc SyncComplete(SyncCompleteRequest) returns (google.protobuf.Empty);
 }

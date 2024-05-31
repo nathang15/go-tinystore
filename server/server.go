@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/nathang15/go-tinystore/node"
-	__ "github.com/nathang15/go-tinystore/pb"
+	"github.com/nathang15/go-tinystore/pb"
 	"github.com/nathang15/go-tinystore/store"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -27,6 +27,7 @@ type CacheServer struct {
 	synced          chan bool
 	mutex           sync.Mutex
 	electionStatus  bool
+	pb.UnimplementedCacheServiceServer
 }
 
 // Create gRPC server
@@ -53,7 +54,7 @@ func InitCacheServer(configFile string, verbose bool) (*grpc.Server, *CacheServe
 	}
 
 	grpcServer := grpc.NewServer(grpc.Creds(credentials))
-	__.RegisterCacheServiceServer(grpcServer, &cacheServer)
+	pb.RegisterCacheServiceServer(grpcServer, &cacheServer)
 	reflection.Register(grpcServer)
 	return grpcServer, &cacheServer
 }
@@ -86,7 +87,7 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 	return credentials.NewTLS(config), nil
 }
 
-func NewGrpcClientForNode(node *node.Node) __.CacheServiceClient {
+func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 	creds, err := LoadTLSCredentials()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create credentials: %v", err))
@@ -97,7 +98,7 @@ func NewGrpcClientForNode(node *node.Node) __.CacheServiceClient {
 		panic(err)
 	}
 
-	return __.NewCacheServiceClient(channel)
+	return pb.NewCacheServiceClient(channel)
 }
 
 func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {
