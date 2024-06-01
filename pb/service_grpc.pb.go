@@ -29,7 +29,7 @@ type CacheServiceClient interface {
 	// Elections
 	GetPid(ctx context.Context, in *PidRequest, opts ...grpc.CallOption) (*PidResponse, error)
 	GetLeader(ctx context.Context, in *LeaderRequest, opts ...grpc.CallOption) (*LeaderResponse, error)
-	GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
+	GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	UpdateLeader(ctx context.Context, in *NewLeaderAnnouncement, opts ...grpc.CallOption) (*GenericResponse, error)
 	RequestElection(ctx context.Context, in *ElectionRequest, opts ...grpc.CallOption) (*GenericResponse, error)
 	// Replication and synchronization
@@ -81,9 +81,9 @@ func (c *cacheServiceClient) GetLeader(ctx context.Context, in *LeaderRequest, o
 	return out, nil
 }
 
-func (c *cacheServiceClient) GetHeartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
-	out := new(HeartbeatResponse)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/GetHeartbeat", in, out, opts...)
+func (c *cacheServiceClient) GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/GetStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ type CacheServiceServer interface {
 	// Elections
 	GetPid(context.Context, *PidRequest) (*PidResponse, error)
 	GetLeader(context.Context, *LeaderRequest) (*LeaderResponse, error)
-	GetHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
+	GetStatus(context.Context, *StatusRequest) (*StatusResponse, error)
 	UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error)
 	RequestElection(context.Context, *ElectionRequest) (*GenericResponse, error)
 	// Replication and synchronization
@@ -161,8 +161,8 @@ func (UnimplementedCacheServiceServer) GetPid(context.Context, *PidRequest) (*Pi
 func (UnimplementedCacheServiceServer) GetLeader(context.Context, *LeaderRequest) (*LeaderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLeader not implemented")
 }
-func (UnimplementedCacheServiceServer) GetHeartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetHeartbeat not implemented")
+func (UnimplementedCacheServiceServer) GetStatus(context.Context, *StatusRequest) (*StatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
 }
 func (UnimplementedCacheServiceServer) UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateLeader not implemented")
@@ -261,20 +261,20 @@ func _CacheService_GetLeader_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CacheService_GetHeartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(HeartbeatRequest)
+func _CacheService_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CacheServiceServer).GetHeartbeat(ctx, in)
+		return srv.(CacheServiceServer).GetStatus(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.CacheService/GetHeartbeat",
+		FullMethod: "/pb.CacheService/GetStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).GetHeartbeat(ctx, req.(*HeartbeatRequest))
+		return srv.(CacheServiceServer).GetStatus(ctx, req.(*StatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -375,8 +375,8 @@ var CacheService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CacheService_GetLeader_Handler,
 		},
 		{
-			MethodName: "GetHeartbeat",
-			Handler:    _CacheService_GetHeartbeat_Handler,
+			MethodName: "GetStatus",
+			Handler:    _CacheService_GetStatus_Handler,
 		},
 		{
 			MethodName: "UpdateLeader",
