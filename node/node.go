@@ -42,7 +42,7 @@ func GetCurrentNodeId(config NodesInfo) int32 {
 			return node.Id
 		}
 	}
-	return -1
+	return 0
 }
 
 func GetRandomNode(info NodesInfo) (Node, error) {

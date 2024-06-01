@@ -1,7 +1,10 @@
 // LRU Cache implementation with doubly linked list and hashmap
 package store
 
-import "errors"
+import (
+	"errors"
+	"sync"
+)
 
 type Node struct {
 	prev *Node
@@ -16,6 +19,7 @@ type LRU struct {
 	tail     *Node
 	capacity int
 	size     int
+	mut      sync.RWMutex // reader/writer mutual exclusion lock because this is read-heavy
 }
 
 func Init(capacity int) LRU {
@@ -32,7 +36,8 @@ func Init(capacity int) LRU {
 }
 
 func (lru *LRU) Get(key int) (int, error) {
-
+	lru.mut.RLock()
+	defer lru.mut.RUnlock()
 	if node, existed := lru.cache[key]; existed {
 		lru.moveToHead(node)
 		return node.val, nil
@@ -42,7 +47,8 @@ func (lru *LRU) Get(key int) (int, error) {
 }
 
 func (lru *LRU) Put(key int, value int) {
-
+	lru.mut.Lock()
+	defer lru.mut.Unlock()
 	if node, existed := lru.cache[key]; existed {
 		node.val = value
 		lru.moveToHead(node)

@@ -35,8 +35,8 @@ type CacheServer struct {
 }
 
 type Pair struct {
-	Key   int `json:"key"`
-	Value int `json:"value"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // Create gRPC server
@@ -45,7 +45,8 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 	nodesInfo := node.LoadNodesConfig(configFile)
 	nodeId := node.GetCurrentNodeId(nodesInfo)
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
 
 	lru := store.Init(capacity)
 
@@ -63,8 +64,8 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 	}
 
 	//routes
-	router.GET("/cache/:key", cacheServer.GetHandler)
-	router.POST("/cache/:key/:value", cacheServer.PutHandler)
+	router.GET("/get/:key", cacheServer.GetHandler)
+	router.POST("/put", cacheServer.PutHandler)
 
 	//Set up TLS
 	credentials, err := LoadTLSCredentials()
@@ -80,17 +81,22 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 
 // GetHandler Impementation
 func (s *CacheServer) GetHandler(c *gin.Context) {
-	key, err := strconv.Atoi(c.Param("key"))
-	if err != nil {
-		s.logger.Errorf("Failed to parse key: %v", err)
-		return
-	}
+	res := make(chan gin.H)
+	go func(ctx *gin.Context) {
+		key, err := strconv.Atoi(c.Param("key"))
+		if err != nil {
+			s.logger.Errorf("Failed to parse key: %v", err)
+			return
+		}
 
-	value, err := s.cache.Get(key)
-	if err != nil {
-		c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
-	}
-	c.IndentedJSON(http.StatusOK, value)
+		value, err := s.cache.Get(key)
+		if err != nil {
+			res <- gin.H{"error": err.Error()}
+		} else {
+			res <- gin.H{"key": key, "value": value}
+		}
+	}(c.Copy())
+	c.IndentedJSON(http.StatusOK, <-res)
 }
 
 // PutHandler Impementation
@@ -100,7 +106,9 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
 		s.logger.Errorf("Failed to bind JSON: %v", err)
 		return
 	}
-	s.cache.Put(p.Key, p.Value)
+	key, _ := strconv.Atoi(p.Key)
+	value, _ := strconv.Atoi(p.Value)
+	s.cache.Put(key, value)
 	c.IndentedJSON(http.StatusCreated, p)
 }
 
@@ -168,4 +176,9 @@ func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {
 		panic(err)
 	}
 	return logger.Sugar()
+}
+
+func (s *CacheServer) RunHttpServer(port int) {
+	s.logger.Infof("HTTP server running on port %d", port)
+	s.router.Run(fmt.Sprintf(":%d", port))
 }
