@@ -4,9 +4,12 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net/http"
 	"os"
+	"strconv"
 	"sync"
 
+	"github.com/gin-gonic/gin"
 	"github.com/nathang15/go-tinystore/node"
 	"github.com/nathang15/go-tinystore/pb"
 	"github.com/nathang15/go-tinystore/store"
@@ -17,6 +20,7 @@ import (
 )
 
 type CacheServer struct {
+	router          *gin.Engine
 	cache           *store.LRU
 	logger          *zap.SugaredLogger
 	nodesInfo       node.NodesInfo
@@ -30,13 +34,24 @@ type CacheServer struct {
 	pb.UnimplementedCacheServiceServer
 }
 
+type Pair struct {
+	Key   int `json:"key"`
+	Value int `json:"value"`
+}
+
 // Create gRPC server
-func InitCacheServer(configFile string, verbose bool) (*grpc.Server, *CacheServer) {
+func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Server, *CacheServer) {
 	sugaredLogger := GetSugaredZapLogger(verbose)
 	nodesInfo := node.LoadNodesConfig(configFile)
 	nodeId := node.GetCurrentNodeId(nodesInfo)
 
+	router := gin.Default()
+
+	lru := store.Init(capacity)
+
 	cacheServer := CacheServer{
+		router:          router,
+		cache:           &lru,
 		logger:          sugaredLogger,
 		nodesInfo:       nodesInfo,
 		nodeId:          nodeId,
@@ -46,6 +61,10 @@ func InitCacheServer(configFile string, verbose bool) (*grpc.Server, *CacheServe
 		synced:          make(chan bool, 1),
 		electionStatus:  NO_ELECTION,
 	}
+
+	//routes
+	router.GET("/cache/:key", cacheServer.GetHandler)
+	router.POST("/cache/:key/:value", cacheServer.PutHandler)
 
 	//Set up TLS
 	credentials, err := LoadTLSCredentials()
@@ -57,6 +76,32 @@ func InitCacheServer(configFile string, verbose bool) (*grpc.Server, *CacheServe
 	pb.RegisterCacheServiceServer(grpcServer, &cacheServer)
 	reflection.Register(grpcServer)
 	return grpcServer, &cacheServer
+}
+
+// GetHandler Impementation
+func (s *CacheServer) GetHandler(c *gin.Context) {
+	key, err := strconv.Atoi(c.Param("key"))
+	if err != nil {
+		s.logger.Errorf("Failed to parse key: %v", err)
+		return
+	}
+
+	value, err := s.cache.Get(key)
+	if err != nil {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	}
+	c.IndentedJSON(http.StatusOK, value)
+}
+
+// PutHandler Impementation
+func (s *CacheServer) PutHandler(c *gin.Context) {
+	var p Pair
+	if err := c.BindJSON(&p); err != nil {
+		s.logger.Errorf("Failed to bind JSON: %v", err)
+		return
+	}
+	s.cache.Put(p.Key, p.Value)
+	c.IndentedJSON(http.StatusCreated, p)
 }
 
 // Set up mTLS config and creds

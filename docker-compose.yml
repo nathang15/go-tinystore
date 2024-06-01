@@ -1,0 +1,45 @@
+# Docker Compose file Reference (https://docs.docker.com/compose/compose-file/)
+
+version: '1'
+
+services:
+
+  cacheserver0:
+    hostname: server0
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    environment:
+      GIN_MODE: release
+      GODEBUG: x509sha1=1 
+
+  cacheserver1:
+    hostname: server1
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    environment:
+      GIN_MODE: release
+      GODEBUG: x509sha1=1   
+
+  cacheserver2:
+    hostname: server2
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    environment:
+      GIN_MODE: release
+      GODEBUG: x509sha1=1   
+
+  cacheserver3:
+    hostname: server3
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    restart: unless-stopped
+    environment:
+      GIN_MODE: release
+      GODEBUG: x509sha1=1   
