@@ -3,27 +3,37 @@ package node
 
 import (
 	"encoding/json"
-	"errors"
+	"hash/crc32"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/nathang15/go-tinystore/pb"
 )
 
 type NodesInfo struct {
-	Nodes []Node `json:"nodes"`
+	Nodes []*Node `json:"nodes"`
 }
 
 type Node struct {
-	Id   int32  `json:"id"`
-	Host string `json:"host"`
-	Port int32  `json:"port"`
+	Id         string `json:"id"`
+	Host       string `json:"host"`
+	RestPort   int32  `json:"port"`
+	GrpcPort   int32  `json:"grpcPort"`
+	HashId     uint32
+	GrpcClient pb.CacheServiceClient
 }
 
 const (
 	ErrNodeNotFound = -1
 )
 
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+func InitNode(Id string) *Node {
+	return &Node{
+		Id:     Id,
+		HashId: GetHashId(Id),
+	}
+}
 
 func LoadNodesConfig(configFile string) NodesInfo {
 	file, _ := os.ReadFile(configFile)
@@ -34,7 +44,7 @@ func LoadNodesConfig(configFile string) NodesInfo {
 	return nodesInfo
 }
 
-func GetCurrentNodeId(config NodesInfo) int32 {
+func GetCurrentNodeId(config NodesInfo) string {
 	host, _ := os.Hostname()
 
 	for _, node := range config.Nodes {
@@ -42,13 +52,27 @@ func GetCurrentNodeId(config NodesInfo) int32 {
 			return node.Id
 		}
 	}
-	return 0
+	return ""
 }
 
-func GetRandomNode(info NodesInfo) (Node, error) {
-	if len(info.Nodes) == 0 {
-		return Node{}, errors.New("no nodes available in info")
-	}
-	randIdx := seededRand.Intn(len(info.Nodes))
-	return info.Nodes[randIdx], nil
+func GetRandomNode(info NodesInfo) *Node {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	ranIdx := r.Intn(len(info.Nodes))
+	return info.Nodes[ranIdx]
+}
+
+func GetHashId(key string) uint32 {
+	return crc32.ChecksumIEEE([]byte(key))
+}
+
+type Nodes []*Node
+
+func (n Nodes) Len() int {
+	return len(n)
+}
+func (n Nodes) Swap(i, j int) {
+	n[i], n[j] = n[j], n[i]
+}
+func (n Nodes) Less(i, j int) bool {
+	return n[i].HashId < n[j].HashId
 }
