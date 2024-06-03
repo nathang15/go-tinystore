@@ -21,11 +21,11 @@ message GenericResponse {
 }
   
 message StatusRequest {
-    int32 caller_node_id = 1; 
+    string caller_node_id = 1; 
 }
   
 message StatusResponse {
-    int32 node_id = 1;
+    string node_id = 1;
     string status = 2;
 }
 
@@ -39,7 +39,7 @@ message LeaderResponse {
 }
 
 message NewLeaderAnnouncement {
-    int32 leader_id = 1;
+    string leader_id = 1;
 }
 
 message PidRequest {
@@ -61,7 +61,7 @@ message SyncCompleteRequest {
 
 message ElectionRequest {
     int32 caller_pid = 1;
-    int32 caller_node_id = 2;
+    string caller_node_id = 2;
 }
 
 service CacheService {

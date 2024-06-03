@@ -4,22 +4,21 @@ package node
 import (
 	"encoding/json"
 	"hash/crc32"
-	"math/rand"
 	"os"
-	"time"
 
 	"github.com/nathang15/go-tinystore/pb"
 )
 
 type NodesInfo struct {
-	Nodes []*Node `json:"nodes"`
+	Nodes map[string]*Node `json:"nodes"`
 }
 
 type Node struct {
-	Id         string `json:"id"`
-	Host       string `json:"host"`
-	RestPort   int32  `json:"port"`
-	GrpcPort   int32  `json:"grpcPort"`
+	Id   string `json:"id"`
+	Host string `json:"host"`
+	Port int32  `json:"port"`
+	// RestPort   int32  `json:"port"`
+	// GrpcPort   int32  `json:"grpcPort"`
 	HashId     uint32
 	GrpcClient pb.CacheServiceClient
 }
@@ -53,12 +52,6 @@ func GetCurrentNodeId(config NodesInfo) string {
 		}
 	}
 	return ""
-}
-
-func GetRandomNode(info NodesInfo) *Node {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	ranIdx := r.Intn(len(info.Nodes))
-	return info.Nodes[ranIdx]
 }
 
 func GetHashId(key string) uint32 {
