@@ -13,7 +13,7 @@ const (
 	FOLLOWER    = "FOLLOWER"
 	RUNNING     = true
 	NO_ELECTION = false
-	NO_LEADER   = -1
+	NO_LEADER   = "NO LEADER"
 	SUCCESS     = "OK"
 )
 
@@ -34,7 +34,7 @@ func (s *CacheServer) RunElection() {
 			continue
 		}
 
-		client := NewGrpcClientForNode(&node)
+		client := NewGrpcClientForNode(node)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -80,7 +80,7 @@ func (s *CacheServer) RunElection() {
 }
 
 // Notify new leader to all nodes
-func (s *CacheServer) SetNewLeader(newLeader int32) {
+func (s *CacheServer) SetNewLeader(newLeader string) {
 	s.logger.Infof("New leader elected: %d", newLeader)
 
 	for _, node := range s.nodesInfo.Nodes {
@@ -88,7 +88,7 @@ func (s *CacheServer) SetNewLeader(newLeader int32) {
 			continue
 		}
 
-		client := NewGrpcClientForNode(&node)
+		client := NewGrpcClientForNode(node)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -134,7 +134,7 @@ func (s *CacheServer) IsLeaderUp() bool {
 
 	leader := s.nodesInfo.Nodes[s.leaderId]
 
-	client := NewGrpcClientForNode(&leader)
+	client := NewGrpcClientForNode(leader)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -169,7 +169,7 @@ func (s *CacheServer) GetPid(ctx context.Context, req *pb.PidRequest) (*pb.PidRe
 	if localPid > req.CallerPid {
 		go s.RunElection()
 	}
-	return &pb.PidResponse{Pid: s.nodeId}, nil
+	return &pb.PidResponse{Pid: localPid}, nil
 }
 
 func (s *CacheServer) RequestElection(ctx context.Context, req *pb.ElectionRequest) (*pb.GenericResponse, error) {

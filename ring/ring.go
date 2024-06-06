@@ -19,13 +19,13 @@ func InitRing(virtual int) *Ring {
 	return &Ring{Nodes: node.Nodes{}, Virtual: virtual}
 }
 
-func (r *Ring) Add(id string) {
+func (r *Ring) Add(id string, host string, port int32) {
 	r.Lock()
 	defer r.Unlock()
 
 	for i := 0; i < r.Virtual; i++ {
 		virtualId := id + "-" + strconv.Itoa(i)
-		node := node.InitNode(virtualId)
+		node := node.InitNode(virtualId, host, port)
 		r.Nodes = append(r.Nodes, node)
 	}
 

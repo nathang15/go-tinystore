@@ -24,10 +24,10 @@ type CacheServer struct {
 	cache           *store.LRU
 	logger          *zap.SugaredLogger
 	nodesInfo       node.NodesInfo
-	leaderId        int32
-	nodeId          int32
+	leaderId        string
+	nodeId          string
 	shutdownChannel chan bool
-	decisionChannel chan int32
+	decisionChannel chan string
 	synced          chan bool
 	mutex           sync.Mutex
 	electionStatus  bool
@@ -58,7 +58,7 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 		nodeId:          nodeId,
 		leaderId:        NO_LEADER,
 		shutdownChannel: make(chan bool, 1),
-		decisionChannel: make(chan int32, 1),
+		decisionChannel: make(chan string, 1),
 		synced:          make(chan bool, 1),
 		electionStatus:  NO_ELECTION,
 	}
@@ -101,15 +101,29 @@ func (s *CacheServer) GetHandler(c *gin.Context) {
 
 // PutHandler Impementation
 func (s *CacheServer) PutHandler(c *gin.Context) {
-	var p Pair
-	if err := c.BindJSON(&p); err != nil {
-		s.logger.Errorf("Failed to bind JSON: %v", err)
+	var newPair Pair
+	if err := c.BindJSON(&newPair); err != nil {
+		s.logger.Errorf("unable to deserialize key-value pair from json: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	key, _ := strconv.Atoi(p.Key)
-	value, _ := strconv.Atoi(p.Value)
+
+	key, err := strconv.Atoi(newPair.Key)
+	if err != nil {
+		s.logger.Errorf("unable to convert key to integer: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	value, err := strconv.Atoi(newPair.Value)
+	if err != nil {
+		s.logger.Errorf("unable to convert value to integer: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	s.cache.Put(key, value)
-	c.IndentedJSON(http.StatusCreated, p)
+	c.IndentedJSON(http.StatusCreated, gin.H{"key": key, "value": value})
 }
 
 // Set up mTLS config and creds

@@ -27,19 +27,37 @@ const (
 	ErrNodeNotFound = -1
 )
 
-func InitNode(Id string) *Node {
+func InitNode(Id string, host string, port int32) *Node {
 	return &Node{
 		Id:     Id,
+		Host:   host,
+		Port:   port,
 		HashId: GetHashId(Id),
 	}
 }
 
 func LoadNodesConfig(configFile string) NodesInfo {
-	file, _ := os.ReadFile(configFile)
-	nodesInfo := NodesInfo{}
-	if err := json.Unmarshal([]byte(file), &nodesInfo); err != nil {
+	file, err := os.ReadFile(configFile)
+	if err != nil {
 		return NodesInfo{}
 	}
+
+	var nodesInfo NodesInfo
+	err = json.Unmarshal(file, &nodesInfo)
+	if err != nil {
+		return NodesInfo{}
+	}
+
+	if len(nodesInfo.Nodes) == 0 {
+		nodesInfo.Nodes = make(map[string]*Node)
+		defaultNode := InitNode("node0", "localhost", 8080)
+		nodesInfo.Nodes[defaultNode.Id] = defaultNode
+	} else {
+		for _, nodeInfo := range nodesInfo.Nodes {
+			nodeInfo.HashId = GetHashId(nodeInfo.Id)
+		}
+	}
+
 	return nodesInfo
 }
 
@@ -51,7 +69,7 @@ func GetCurrentNodeId(config NodesInfo) string {
 			return node.Id
 		}
 	}
-	return ""
+	return "node0"
 }
 
 func GetHashId(key string) uint32 {

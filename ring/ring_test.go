@@ -12,7 +12,7 @@ import (
 func TestAddNode(t *testing.T) {
 	Convey("Add node to ring with 1 virtual node", t, func() {
 		r := InitRing(1)
-		r.Add("node1")
+		r.Add("node1", "localhost", 8080)
 
 		Convey("Node should be added", func() {
 			So(r.Nodes.Len(), ShouldEqual, 1)
@@ -25,7 +25,7 @@ func TestAddNode(t *testing.T) {
 
 	Convey("Add node to ring with 5 virtual nodes", t, func() {
 		r := InitRing(5)
-		r.Add("node1")
+		r.Add("node1", "localhost", 8080)
 
 		Convey("5 virtual nodes should be added", func() {
 			So(r.Nodes.Len(), ShouldEqual, 5)
@@ -40,9 +40,9 @@ func TestAddNode(t *testing.T) {
 
 	Convey("Add multiple nodes to ring with 3 virtual nodes", t, func() {
 		r := InitRing(3)
-		r.Add("node1")
-		r.Add("node2")
-		r.Add("node3")
+		r.Add("node1", "localhost", 8080)
+		r.Add("node2", "localhost", 8081)
+		r.Add("node3", "localhost", 8082)
 
 		Convey("9 virtual nodes should be added", func() {
 			So(r.Nodes.Len(), ShouldEqual, 9)
@@ -59,9 +59,9 @@ func TestAddNode(t *testing.T) {
 func TestRemoveNode(t *testing.T) {
 	Convey("Remove node from ring with 1 virtual node", t, func() {
 		r := InitRing(1)
-		r.Add("node1")
-		r.Add("node2")
-		r.Add("node3")
+		r.Add("node1", "localhost", 8080)
+		r.Add("node2", "localhost", 8081)
+		r.Add("node3", "localhost", 8082)
 
 		Convey("Node should be removed", func() {
 			err := r.Remove("node2")
@@ -78,9 +78,9 @@ func TestRemoveNode(t *testing.T) {
 
 	Convey("Remove node from ring with 5 virtual nodes", t, func() {
 		r := InitRing(5)
-		r.Add("node1")
-		r.Add("node2")
-		r.Add("node3")
+		r.Add("node1", "localhost", 8080)
+		r.Add("node2", "localhost", 8081)
+		r.Add("node3", "localhost", 8082)
 
 		Convey("5 virtual nodes should be removed", func() {
 			err := r.Remove("node2")
@@ -99,9 +99,9 @@ func TestRemoveNode(t *testing.T) {
 func TestGet(t *testing.T) {
 	Convey("Get node from ring with 1 virtual node", t, func() {
 		r := InitRing(1)
-		r.Add("node1")
-		r.Add("node2")
-		r.Add("node3")
+		r.Add("node1", "localhost", 8080)
+		r.Add("node2", "localhost", 8081)
+		r.Add("node3", "localhost", 8082)
 
 		Convey("Return closest node", func() {
 			insertid := "justa"
@@ -133,9 +133,9 @@ func TestGet(t *testing.T) {
 
 	Convey("Get node from ring with 5 virtual nodes", t, func() {
 		r := InitRing(5)
-		r.Add("node1")
-		r.Add("node2")
-		r.Add("node3")
+		r.Add("node1", "localhost", 8080)
+		r.Add("node2", "localhost", 8081)
+		r.Add("node3", "localhost", 8082)
 
 		Convey("Return closest node", func() {
 			insertid := "justa"
@@ -182,7 +182,7 @@ func TestStress(t *testing.T) {
 	Convey("Stress test with many nodes and virtual nodes", t, func() {
 		r := InitRing(100)
 		for i := 0; i < 1000; i++ {
-			r.Add(fmt.Sprintf("node%d", i))
+			r.Add(fmt.Sprintf("node%d", i), "localhost", int32(8080+i))
 		}
 		So(r.Nodes.Len(), ShouldEqual, 100000)
 		Convey("Remove half the nodes", func() {
@@ -198,7 +198,7 @@ func TestStress(t *testing.T) {
 func TestEdgeCases(t *testing.T) {
 	Convey("Edge cases", t, func() {
 		r := InitRing(1)
-		r.Add("node1")
+		r.Add("node1", "localhost", 8080)
 
 		Convey("Get node with empty ring", func() {
 			r := InitRing(1)
@@ -215,7 +215,7 @@ func TestEdgeCases(t *testing.T) {
 
 		Convey("Add node to ring with 0 virtual nodes", func() {
 			r := InitRing(0)
-			r.Add("node1")
+			r.Add("node1", "localhost", 8080)
 			So(r.Nodes.Len(), ShouldEqual, 0)
 		})
 
