@@ -6,8 +6,6 @@ import (
 	"testing"
 )
 
-// ALL WITH 100 VNODE FOR EACH NODE
-
 func Benchmark10kConcurrentPuts(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		c := InitClient("D:/tinystore/configs/nodes.json", 100)

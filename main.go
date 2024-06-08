@@ -30,3 +30,7 @@ func main() {
 	go cacheServer.MonitorLeaderStatus()
 	cacheServer.RunHttpServer(*port)
 }
+
+// func main() {
+// 	ring.PrintBucketDistribution()
+// }

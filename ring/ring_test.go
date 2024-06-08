@@ -2,7 +2,7 @@ package ring
 
 import (
 	"fmt"
-	"sort"
+	"strings"
 	"testing"
 
 	"github.com/nathang15/go-tinystore/node"
@@ -96,84 +96,49 @@ func TestRemoveNode(t *testing.T) {
 	})
 }
 
+func getPrefix(s string) string {
+	parts := strings.SplitN(s, "-", 2)
+	return parts[0]
+}
+
 func TestGet(t *testing.T) {
-	Convey("Get node from ring with 1 virtual node", t, func() {
+	// Load the nodes configuration from the JSON file
+	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
+	node0 := nodes_config.Nodes["node0"]
+	node1 := nodes_config.Nodes["node1"]
+	node2 := nodes_config.Nodes["node2"]
+
+	Convey("Given a ring with 1 vnode", t, func() {
 		r := InitRing(1)
-		r.Add("node1", "localhost", 8080)
-		r.Add("node2", "localhost", 8081)
-		r.Add("node3", "localhost", 8082)
+		r.Add(node1.Id, node1.Host, node1.Port)
 
-		Convey("Return closest node", func() {
-			insertid := "justa"
-			insertHash := node.GetHashId(insertid)
+		Convey("Then it should return that node regardless of input", func() {
+			insertnode := r.Get("id")
+			So(getPrefix(insertnode), ShouldEqual, getPrefix(node1.Id))
 
-			nodes := r.Nodes
-			nodeHashes := []uint32{
-				node.GetHashId("node1-0"),
-				node.GetHashId("node2-0"),
-				node.GetHashId("node3-0"),
-			}
-			sort.Slice(nodeHashes, func(i, j int) bool { return nodeHashes[i] < nodeHashes[j] })
-
-			var expectedNode string
-			if insertHash <= nodeHashes[0] || insertHash > nodeHashes[len(nodeHashes)-1] {
-				expectedNode = nodes[0].Id // wrap around to the first node
-			} else {
-				for i, hash := range nodeHashes {
-					if insertHash <= hash {
-						expectedNode = nodes[i].Id
-						break
-					}
-				}
-			}
-			insertnode := r.Get(insertid)
-			So(insertnode, ShouldEqual, expectedNode)
+			insertnode = r.Get("anykey")
+			So(getPrefix(insertnode), ShouldEqual, getPrefix(node1.Id))
 		})
 	})
 
-	Convey("Get node from ring with 5 virtual nodes", t, func() {
-		r := InitRing(5)
-		r.Add("node1", "localhost", 8080)
-		r.Add("node2", "localhost", 8081)
-		r.Add("node3", "localhost", 8082)
+	Convey("Given a ring with multiple vnodes", t, func() {
+		insertid := "random_key"
 
-		Convey("Return closest node", func() {
-			insertid := "justa"
-			insertHash := node.GetHashId(insertid)
+		r := InitRing(3)
+		r.Add(node0.Id, node0.Host, node0.Port)
+		r.Add(node1.Id, node1.Host, node1.Port)
+		r.Add(node2.Id, node2.Host, node2.Port)
 
-			nodes := r.Nodes
-			nodeHashes := []uint32{
-				node.GetHashId("node1-0"),
-				node.GetHashId("node1-1"),
-				node.GetHashId("node1-2"),
-				node.GetHashId("node1-3"),
-				node.GetHashId("node1-4"),
-				node.GetHashId("node2-0"),
-				node.GetHashId("node2-1"),
-				node.GetHashId("node2-2"),
-				node.GetHashId("node2-3"),
-				node.GetHashId("node2-4"),
-				node.GetHashId("node3-0"),
-				node.GetHashId("node3-1"),
-				node.GetHashId("node3-2"),
-				node.GetHashId("node3-3"),
-				node.GetHashId("node3-4"),
-			}
-			sort.Slice(nodeHashes, func(i, j int) bool { return nodeHashes[i] < nodeHashes[j] })
+		Convey("Then it should return the node closest to the hashed key", func() {
+			node0hash := node.GetHashId(node0.Id)
+			node1hash := node.GetHashId(node1.Id)
+			inserthash := node.GetHashId(insertid)
 
-			var expectedNode string
-			if insertHash <= nodeHashes[0] || insertHash > nodeHashes[len(nodeHashes)-1] {
-				expectedNode = nodes[0].Id // wrap around to the first node
-			} else {
-				for i, hash := range nodeHashes {
-					if insertHash <= hash {
-						expectedNode = nodes[i].Id
-						break
-					}
-				}
-			}
+			So(inserthash, ShouldBeGreaterThanOrEqualTo, node1hash)
+			So(inserthash, ShouldBeLessThan, node0hash)
+
 			insertnode := r.Get(insertid)
-			So(insertnode, ShouldEqual, expectedNode)
+			So(getPrefix(insertnode), ShouldEqual, getPrefix(node0.Id))
 		})
 	})
 }
