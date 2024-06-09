@@ -60,7 +60,7 @@ func (s *CacheServer) RunElection() {
 		s.logger.Infof("Electing leader!")
 		select {
 		case s.leaderId = <-s.decisionChannel:
-			s.logger.Infof("Leader elected: %d", s.leaderId)
+			s.logger.Infof("Received decision: Leader is node %s", s.leaderId)
 			s.electionStatus = NO_ELECTION
 			return
 		case <-time.After(5 * time.Second):
@@ -81,7 +81,7 @@ func (s *CacheServer) RunElection() {
 
 // Notify new leader to all nodes
 func (s *CacheServer) SetNewLeader(newLeader string) {
-	s.logger.Infof("New leader elected: %d", newLeader)
+	s.logger.Infof("Announcing node %s won election", newLeader)
 
 	for _, node := range s.nodesInfo.Nodes {
 		if node.Id == s.nodeId {
@@ -94,10 +94,13 @@ func (s *CacheServer) SetNewLeader(newLeader string) {
 
 		_, err := client.UpdateLeader(ctx, &pb.NewLeaderAnnouncement{LeaderId: newLeader})
 		if err != nil {
-			s.logger.Infof("Error updating leader to node %d: %v", node.Id, err)
+			s.logger.Infof("Election leader announcement to node %s error: %v", node.Id, err)
 			continue
 		}
 	}
+
+	s.leaderId = newLeader
+	s.logger.Infof("New leader set: %s", s.leaderId)
 }
 
 // leader status monitoring
@@ -114,12 +117,35 @@ func (s *CacheServer) MonitorLeaderStatus() {
 				s.logger.Info("Leader is down, running election")
 				s.RunElection()
 				s.logger.Info("Selected new leader!")
+			} else {
+				// Periodically call GetStatus to check the heartbeat
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+
+				response, err := s.GetStatus(ctx, &pb.StatusRequest{CallerNodeId: s.nodeId})
+				if err != nil {
+					s.logger.Infof("Error getting status from leader: %v", err)
+				} else {
+					s.logger.Infof("Received heartbeat status: %s from node %s", response.Status, response.NodeId)
+				}
 			}
 		case <-s.shutdownChannel:
 			s.logger.Info("Shutting down leader status monitoring")
 			return
 		}
 	}
+}
+
+func (s *CacheServer) GetStatus(ctx context.Context, req *pb.StatusRequest) (*pb.StatusResponse, error) {
+	var status string
+	if s.nodeId == s.leaderId {
+		status = LEADER
+	} else {
+		status = FOLLOWER
+	}
+
+	s.logger.Infof("Node %s returning status %s to node %s", s.nodeId, status, req.CallerNodeId)
+	return &pb.StatusResponse{Status: status, NodeId: s.nodeId}, nil
 }
 
 func (s *CacheServer) IsLeaderUp() bool {
@@ -132,17 +158,23 @@ func (s *CacheServer) IsLeaderUp() bool {
 		return true
 	}
 
-	leader := s.nodesInfo.Nodes[s.leaderId]
+	leader, exists := s.nodesInfo.Nodes[s.leaderId]
+	if !exists {
+		s.logger.Infof("Leader node %s not found in nodesInfo", s.leaderId)
+		return false
+	}
 
 	client := NewGrpcClientForNode(leader)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := client.GetStatus(ctx, &pb.StatusRequest{CallerNodeId: s.nodeId})
+	response, err := client.GetStatus(ctx, &pb.StatusRequest{CallerNodeId: s.nodeId})
 	if err != nil {
-		s.logger.Infof("Leader %d is down: %v", s.leaderId, err)
+		s.logger.Infof("Leader %s is down: %v", s.leaderId, err)
 		return false
 	}
+
+	s.logger.Infof("Received status %s from leader %s", response.Status, s.leaderId)
 	return true
 }
 
@@ -150,18 +182,6 @@ func (s *CacheServer) UpdateLeader(ctx context.Context, req *pb.NewLeaderAnnounc
 	s.leaderId = req.LeaderId
 	s.decisionChannel <- s.leaderId
 	return &pb.GenericResponse{Data: SUCCESS}, nil
-}
-
-func (s *CacheServer) GetStatus(ctx context.Context, req *pb.StatusRequest) (*pb.StatusResponse, error) {
-	var status string
-	if s.nodeId == s.leaderId {
-		status = LEADER
-	} else {
-		status = FOLLOWER
-	}
-
-	s.logger.Infof("Node %d returning status %s to node %d", s.nodeId, status, req.CallerNodeId)
-	return &pb.StatusResponse{Status: status, NodeId: s.nodeId}, nil
 }
 
 func (s *CacheServer) GetPid(ctx context.Context, req *pb.PidRequest) (*pb.PidResponse, error) {

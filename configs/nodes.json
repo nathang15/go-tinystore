@@ -3,17 +3,29 @@
         "node0": {
             "id": "node0",
             "host": "cacheserver0",
-            "port": 8080
+            "rest_port": 8080,
+            "grpc_port": 5005,
+            "HashId": ""
         },
         "node1": {
             "id": "node1",
             "host": "cacheserver1",
-            "port": 8080
+            "rest_port": 8080,
+            "grpc_port": 5005,
+            "HashId": ""
         },
         "node2": {
             "id": "node2",
             "host": "cacheserver2",
-            "port": 8080
+            "rest_port": 8080,
+            "grpc_port": 5005,
+            "HashId": ""
         }
-    }
+    },
+    "enable_https": true,
+    "enable_client_auth": true,
+    "server_logfile": "tinystore.log",
+    "server_errfile": "tinystore.err",
+    "client_logfile": "tinystore-client.log",
+    "client_errfile": "tinystore-client.err"
 }

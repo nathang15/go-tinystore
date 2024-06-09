@@ -28,9 +28,11 @@ func main() {
 	go grpcServer.Serve(listener)
 	cacheServer.RunElection()
 	go cacheServer.MonitorLeaderStatus()
+	log.Printf("Running REST API server on port %d...", *port)
 	cacheServer.RunHttpServer(*port)
 }
 
+// OUTPUT DISTRIBUTT
 // func main() {
 // 	ring.PrintBucketDistribution()
 // }

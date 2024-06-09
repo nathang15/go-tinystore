@@ -160,12 +160,12 @@ func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 		panic(fmt.Sprintf("Failed to create credentials: %v", err))
 	}
 
-	channel, err := grpc.NewClient(fmt.Sprintf("%s:%d", node.Host, node.Port), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.Port), grpc.WithTransportCredentials(creds))
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("Failed to dial: %v", err))
 	}
 
-	return pb.NewCacheServiceClient(channel)
+	return pb.NewCacheServiceClient(conn)
 }
 
 func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {

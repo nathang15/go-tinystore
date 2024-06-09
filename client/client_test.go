@@ -8,7 +8,7 @@ import (
 
 func Benchmark10kConcurrentPuts(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		c := InitClient("D:/tinystore/configs/nodes.json", 100)
+		c := InitClient("../configs/nodes.json", 100)
 		var wg sync.WaitGroup
 		for i := 0; i < 10; i++ {
 			wg.Add(1)
@@ -26,7 +26,7 @@ func Benchmark10kConcurrentPuts(b *testing.B) {
 
 func Benchmark50kConcurrentPuts(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		c := InitClient("D:/tinystore/configs/nodes.json", 100)
+		c := InitClient("../configs/nodes.json", 100)
 		var wg sync.WaitGroup
 		for i := 0; i < 50; i++ {
 			wg.Add(1)
@@ -44,7 +44,7 @@ func Benchmark50kConcurrentPuts(b *testing.B) {
 
 func Benchmark100kConcurrentPuts(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		c := InitClient("D:/tinystore/configs/nodes.json", 100)
+		c := InitClient("../configs/nodes.json", 100)
 		var wg sync.WaitGroup
 		for i := 0; i < 100; i++ {
 			wg.Add(1)
@@ -63,7 +63,7 @@ func Benchmark100kConcurrentPuts(b *testing.B) {
 func BenchmarkLargeVolumeConcurrentPuts(b *testing.B) {
 	largeValue := make([]byte, 1024*1024) // 1MB value
 	for n := 0; n < b.N; n++ {
-		c := InitClient("D:/tinystore/configs/nodes.json", 100)
+		c := InitClient("../configs/nodes.json", 100)
 		var wg sync.WaitGroup
 		for i := 0; i < 10; i++ {
 			wg.Add(1)
@@ -81,7 +81,7 @@ func BenchmarkLargeVolumeConcurrentPuts(b *testing.B) {
 
 func BenchmarkHighIterationConcurrentPuts(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		c := InitClient("D:/tinystore/configs/nodes.json", 100)
+		c := InitClient("../configs/nodes.json", 100)
 		var wg sync.WaitGroup
 		for i := 0; i < 10; i++ {
 			wg.Add(1)
