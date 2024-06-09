@@ -31,21 +31,21 @@ func (r *Ring) Add(id string, host string, port int32) {
 	defer r.Unlock()
 
 	if r.Virtual == 0 {
-		return
-	}
-
-	// Calculate the range for virtual nodes based on the number of virtual nodes
-	virtualNodeRange := 1 << 31 / r.Virtual
-
-	for i := 0; i < r.Virtual; i++ {
-		// Calculate the virtual node ID within the range
-		virtualNodeId := strconv.Itoa(int((hash(id) + uint32(virtualNodeRange*i)) % (1 << 31)))
-		virtualId := id + "-" + virtualNodeId
-		node := node.InitNode(virtualId, host, port)
+		node := node.InitNode(id, host, port)
 		r.Nodes = append(r.Nodes, node)
-		r.VirtualMap[virtualId] = id // map virtual node to actual node
-	}
+	} else {
+		// Calculate the range for virtual nodes based on the number of virtual nodes
+		virtualNodeRange := 1 << 31 / r.Virtual
 
+		for i := 0; i < r.Virtual; i++ {
+			// Calculate the virtual node ID within the range
+			virtualNodeId := strconv.Itoa(int((hash(id) + uint32(virtualNodeRange*i)) % (1 << 31)))
+			virtualId := id + "-" + virtualNodeId
+			node := node.InitNode(virtualId, host, port)
+			r.Nodes = append(r.Nodes, node)
+			r.VirtualMap[virtualId] = id // map virtual node to actual node
+		}
+	}
 	sort.Sort(r.Nodes)
 }
 
@@ -63,13 +63,24 @@ func (r *Ring) Remove(id string) error {
 	var newNodes node.Nodes
 	var found bool
 
-	// Filter out nodes not associated with the removed node
-	for _, n := range r.Nodes {
-		if !strings.HasPrefix(n.Id, id+"-") {
-			newNodes = append(newNodes, n)
-		} else {
-			delete(r.VirtualMap, n.Id) // Remove virtual node ID from map
-			found = true               // Set found flag to true
+	if r.Virtual == 0 {
+		// If no virtual nodes, simply remove the node with the matching ID
+		for _, n := range r.Nodes {
+			if n.Id != id {
+				newNodes = append(newNodes, n)
+			} else {
+				found = true
+			}
+		}
+	} else {
+		// Filter out nodes not associated with the removed node
+		for _, n := range r.Nodes {
+			if !strings.HasPrefix(n.Id, id+"-") {
+				newNodes = append(newNodes, n)
+			} else {
+				delete(r.VirtualMap, n.Id) // Remove virtual node ID from map
+				found = true               // Set found flag to true
+			}
 		}
 	}
 
@@ -85,14 +96,32 @@ func (r *Ring) Remove(id string) error {
 func (r *Ring) Get(id string) string {
 	r.RLock()
 	defer r.RUnlock()
-	if r.Nodes.Len() == 0 {
-		return ""
+
+	if len(r.Nodes) == 0 {
+		panic("Empty ring")
 	}
-	i := r.searchNode(id)
-	if i >= r.Nodes.Len() {
-		i = 0
+	if r.Virtual == 0 {
+		i := r.search(id)
+		if i >= r.Nodes.Len() {
+			i = 0
+		}
+
+		return r.Nodes[i].Id
+	} else {
+		i := r.searchNode(id)
+		if i >= r.Nodes.Len() {
+			i = 0
+		}
+		return r.Nodes[i].Id
 	}
-	return r.Nodes[i].Id
+}
+
+func (r *Ring) search(id string) int {
+	searchfn := func(i int) bool {
+		return r.Nodes[i].HashId >= node.GetHashId(id)
+	}
+
+	return sort.Search(r.Nodes.Len(), searchfn)
 }
 
 func (r *Ring) searchNode(id string) int {

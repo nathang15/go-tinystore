@@ -10,6 +10,37 @@ import (
 )
 
 func TestAddNode(t *testing.T) {
+	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
+	node0 := nodes_config.Nodes["node0"]
+	node1 := nodes_config.Nodes["node1"]
+	node2 := nodes_config.Nodes["node2"]
+	Convey("Given empty ring", t, func() {
+		Convey("Then it should add node", func() {
+			r := InitRing(0)
+			r.Add(node0.Id, node0.Host, node0.Port)
+
+			So(r.Nodes.Len(), ShouldEqual, 1)
+
+			Convey("Then it should add node & sort by node id", func() {
+				r := InitRing(0)
+				r.Add(node1.Id, node1.Host, node1.Port)
+				r.Add(node2.Id, node2.Host, node2.Port)
+
+				So(r.Nodes.Len(), ShouldEqual, 2)
+
+				node1hash := node.GetHashId(node1.Id)
+				node2hash := node.GetHashId(node2.Id)
+
+				So(node1hash, ShouldBeGreaterThan, node2hash)
+
+				So(r.Nodes[0].Id, ShouldEqual, node2.Id)
+				So(r.Nodes[1].Id, ShouldEqual, node1.Id)
+			})
+		})
+	})
+}
+
+func TestAddWithVNode(t *testing.T) {
 	Convey("Add node to ring with 1 virtual node", t, func() {
 		r := InitRing(1)
 		r.Add("node1", "localhost", 8080)
@@ -57,6 +88,38 @@ func TestAddNode(t *testing.T) {
 }
 
 func TestRemoveNode(t *testing.T) {
+	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
+	node0 := nodes_config.Nodes["node0"]
+	node1 := nodes_config.Nodes["node1"]
+	node2 := nodes_config.Nodes["node2"]
+
+	Convey("Given ring with nodes", t, func() {
+		r := InitRing(0)
+		r.Add(node0.Id, node0.Host, node0.Port)
+		r.Add(node1.Id, node1.Host, node1.Port)
+		r.Add(node2.Id, node2.Host, node2.Port)
+
+		Convey("When node doesn't exist", func() {
+			Convey("Then it should return error", func() {
+
+				Convey("When node exists", func() {
+					Convey("Then it should remove node", func() {
+						err := r.Remove(node2.Id)
+						So(err, ShouldBeNil)
+
+						So(r.Nodes.Len(), ShouldEqual, 2)
+
+						// node 0 hash is lower than node 1, so this is sorted the order they appear in
+						So(r.Nodes[0].Id, ShouldEqual, node1.Id)
+						So(r.Nodes[1].Id, ShouldEqual, node0.Id)
+					})
+				})
+			})
+		})
+	})
+}
+
+func TestRemoveWithVNode(t *testing.T) {
 	Convey("Remove node from ring with 1 virtual node", t, func() {
 		r := InitRing(1)
 		r.Add("node1", "localhost", 8080)
@@ -102,6 +165,46 @@ func getPrefix(s string) string {
 }
 
 func TestGet(t *testing.T) {
+	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
+	node0 := nodes_config.Nodes["node0"]
+	node1 := nodes_config.Nodes["node1"]
+	node2 := nodes_config.Nodes["node2"]
+	Convey("Given ring with 1 node", t, func() {
+		r := InitRing(0)
+		r.Add(node1.Id, node1.Host, node1.Port)
+
+		Convey("Then it should return that node regardless of input", func() {
+			insertnode := r.Get("id")
+			So(insertnode, ShouldEqual, node1.Id)
+
+			insertnode = r.Get("anykey")
+			So(insertnode, ShouldEqual, node1.Id)
+		})
+	})
+
+	Convey("Given ring with multiple nodes", t, func() {
+		insertid := "random_key"
+
+		r := InitRing(0)
+		r.Add(node0.Id, node0.Host, node0.Port)
+		r.Add(node1.Id, node1.Host, node1.Port)
+		r.Add(node2.Id, node2.Host, node2.Port)
+
+		Convey("Then it should return node closest", func() {
+			node0hash := node.GetHashId(node0.Id)
+			node1hash := node.GetHashId(node1.Id)
+			inserthash := node.GetHashId(insertid)
+
+			So(inserthash, ShouldBeGreaterThan, node1hash)
+			So(inserthash, ShouldBeLessThan, node0hash)
+
+			insertnode := r.Get(insertid)
+			So(insertnode, ShouldEqual, node0.Id)
+		})
+	})
+}
+
+func TestGetWithVNode(t *testing.T) {
 	// Load the nodes configuration from the JSON file
 	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
 	node0 := nodes_config.Nodes["node0"]
