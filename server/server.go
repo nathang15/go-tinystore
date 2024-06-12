@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -10,13 +11,16 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/nathang15/go-tinystore/node"
 	"github.com/nathang15/go-tinystore/pb"
 	"github.com/nathang15/go-tinystore/store"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 )
 
 type CacheServer struct {
@@ -39,7 +43,6 @@ type Pair struct {
 	Value string `json:"value"`
 }
 
-// Create gRPC server
 func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Server, *CacheServer) {
 	sugaredLogger := GetSugaredZapLogger(verbose)
 	nodesInfo := node.LoadNodesConfig(configFile)
@@ -195,4 +198,35 @@ func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {
 func (s *CacheServer) RunHttpServer(port int) {
 	s.logger.Infof("HTTP server running on port %d", port)
 	s.router.Run(fmt.Sprintf(":%d", port))
+}
+
+// gRPC handler for getting item from cache
+func (s *CacheServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
+	key, err := strconv.Atoi(req.Key)
+	if err != nil {
+		s.logger.Errorf("unable to convert %s to integer", req.Key)
+		return nil, status.Errorf(codes.InvalidArgument, "key must be integer")
+	}
+	value, err := s.cache.Get(key)
+	if err != nil {
+		return &pb.GetResponse{Data: "key not found"}, nil
+	}
+	strvalue := strconv.Itoa(value)
+	return &pb.GetResponse{Data: strvalue}, nil
+}
+
+// gRPC handler for putting item in cache
+func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty, error) {
+	key, err := strconv.Atoi(req.Key)
+	if err != nil {
+		s.logger.Errorf("unable to convert key %s to integer", req.Key)
+		return nil, status.Errorf(codes.InvalidArgument, "key must be integer")
+	}
+	value, err := strconv.Atoi(req.Value)
+	if err != nil {
+		s.logger.Errorf("unable to convert value %s to integer", req.Value)
+		return nil, status.Errorf(codes.InvalidArgument, "value must be integer")
+	}
+	s.cache.Put(key, value)
+	return &empty.Empty{}, nil
 }

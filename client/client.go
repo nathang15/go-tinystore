@@ -2,14 +2,20 @@ package client
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/nathang15/go-tinystore/node"
+	"github.com/nathang15/go-tinystore/pb"
 	"github.com/nathang15/go-tinystore/ring"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type Client struct {
@@ -87,4 +93,42 @@ func (c *Client) Put(key string, value string) (string, error) {
 		return "", err
 	}
 	return string(body), nil
+}
+
+func InitCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+	creds, err := LoadTLSCredentials()
+	if err != nil {
+		log.Fatalf("failed to create credentials: %v", err)
+	}
+
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", server_host, server_port), grpc.WithTransportCredentials(creds))
+	if err != nil {
+		panic(err)
+	}
+
+	return pb.NewCacheServiceClient(conn)
+}
+
+func LoadTLSCredentials() (credentials.TransportCredentials, error) {
+	pemServerCA, err := os.ReadFile("certs/ca-cert.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemServerCA) {
+		return nil, fmt.Errorf("failed to add server CA's certificate")
+	}
+
+	clientCert, err := tls.LoadX509KeyPair("certs/client-cert.pem", "certs/client-key.pem")
+	if err != nil {
+		return nil, err
+	}
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+		RootCAs:      certPool,
+	}
+
+	return credentials.NewTLS(config), nil
 }
