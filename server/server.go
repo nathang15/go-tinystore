@@ -163,7 +163,7 @@ func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 		panic(fmt.Sprintf("Failed to create credentials: %v", err))
 	}
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.Port), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		panic(fmt.Sprintf("Failed to dial: %v", err))
 	}
@@ -200,7 +200,6 @@ func (s *CacheServer) RunHttpServer(port int) {
 	s.router.Run(fmt.Sprintf(":%d", port))
 }
 
-// gRPC handler for getting item from cache
 func (s *CacheServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
 	key, err := strconv.Atoi(req.Key)
 	if err != nil {
@@ -215,7 +214,6 @@ func (s *CacheServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespo
 	return &pb.GetResponse{Data: strvalue}, nil
 }
 
-// gRPC handler for putting item in cache
 func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty, error) {
 	key, err := strconv.Atoi(req.Key)
 	if err != nil {

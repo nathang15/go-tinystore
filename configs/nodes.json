@@ -3,17 +3,20 @@
         "node0": {
             "id": "node0",
             "host": "cacheserver0",
-            "port": 8080
+            "rest_port": 8080,
+            "grpc_port": 5005
         },
         "node1": {
             "id": "node1",
             "host": "cacheserver1",
-            "port": 8080
+            "rest_port": 8080,
+            "grpc_port": 5005
         },
         "node2": {
             "id": "node2",
             "host": "cacheserver2",
-            "port": 8080
+            "rest_port": 8080,
+            "grpc_port": 5005
         }
     },
     "enable_https": true,

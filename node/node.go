@@ -14,11 +14,10 @@ type NodesInfo struct {
 }
 
 type Node struct {
-	Id   string `json:"id"`
-	Host string `json:"host"`
-	Port int32  `json:"port"`
-	// RestPort   int32  `json:"port"`
-	// GrpcPort   int32  `json:"grpcPort"`
+	Id         string `json:"id"`
+	Host       string `json:"host"`
+	RestPort   int32  `json:"port"`
+	GrpcPort   int32  `json:"grpcPort"`
 	HashId     uint32
 	GrpcClient pb.CacheServiceClient
 }
@@ -27,12 +26,13 @@ const (
 	ErrNodeNotFound = -1
 )
 
-func InitNode(Id string, host string, port int32) *Node {
+func InitNode(Id string, host string, restPort int32, grpcPort int32) *Node {
 	return &Node{
-		Id:     Id,
-		Host:   host,
-		Port:   port,
-		HashId: GetHashId(Id),
+		Id:       Id,
+		Host:     host,
+		RestPort: restPort,
+		GrpcPort: grpcPort,
+		HashId:   GetHashId(Id),
 	}
 }
 
@@ -50,7 +50,7 @@ func LoadNodesConfig(configFile string) NodesInfo {
 
 	if len(nodesInfo.Nodes) == 0 {
 		nodesInfo.Nodes = make(map[string]*Node)
-		defaultNode := InitNode("node0", "localhost", 8080)
+		defaultNode := InitNode("node0", "localhost", 8080, 5005)
 		nodesInfo.Nodes[defaultNode.Id] = defaultNode
 	} else {
 		for _, nodeInfo := range nodesInfo.Nodes {
