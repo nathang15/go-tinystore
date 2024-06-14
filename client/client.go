@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/nathang15/go-tinystore/node"
 	"github.com/nathang15/go-tinystore/pb"
@@ -36,7 +38,7 @@ func InitClient(configFile string, virtualNodes int) *Client {
 	}
 	r := ring.InitRing(virtualNodes)
 	for _, node := range nodesInfo.Nodes {
-		r.Add(node.Id, node.Host, node.Port)
+		r.Add(node.Id, node.Host, node.RestPort, node.GrpcPort)
 	}
 	return &Client{Info: nodesInfo, Ring: r, vNode: virtualNodes}
 }
@@ -45,7 +47,7 @@ func (c *Client) Get(key string) string {
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Info.Nodes[nodeId]
 
-	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.Port))
+	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.RestPort))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,6 +61,24 @@ func (c *Client) Get(key string) string {
 	}
 
 	return string(body)
+}
+
+func (c *Client) GetForGrpc(key string) {
+	nodeId := c.Ring.Get(key)
+	nodeInfo := c.Info.Nodes[nodeId]
+
+	client := InitCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	res, err := client.Get(ctx, &pb.GetRequest{Key: key})
+	if err != nil {
+		log.Fatalf("Error getting key %s: %v", key, err)
+		return
+	}
+
+	log.Printf("Got value %s for key %s", res.GetData(), key)
 }
 
 func (c *Client) Put(key string, value string) (string, error) {
@@ -75,7 +95,7 @@ func (c *Client) Put(key string, value string) (string, error) {
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(payload)
 
-	host := fmt.Sprintf("http://%s:%d/put", nodeInfo.Host, nodeInfo.Port)
+	host := fmt.Sprintf("http://%s:%d/put", nodeInfo.Host, nodeInfo.RestPort)
 	req, err := http.NewRequest("POST", host, b)
 	if err != nil {
 		return "", err
@@ -95,6 +115,28 @@ func (c *Client) Put(key string, value string) (string, error) {
 	return string(body), nil
 }
 
+func (c *Client) PutForGrpc(key string, value string) {
+	nodeId := c.Ring.Get(key)
+	if nodeId == "" {
+		return
+	}
+	nodeInfo, exists := c.Info.Nodes[nodeId]
+	if !exists {
+		return
+	}
+
+	client := InitCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := client.Put(ctx, &pb.PutRequest{Key: key, Value: value})
+	if err != nil {
+		log.Fatalf("Error putting key '%s' value '%s' into cache: %v", key, value, err)
+		return
+	}
+}
+
 func InitCacheClient(server_host string, server_port int) pb.CacheServiceClient {
 	creds, err := LoadTLSCredentials()
 	if err != nil {
@@ -110,7 +152,7 @@ func InitCacheClient(server_host string, server_port int) pb.CacheServiceClient 
 }
 
 func LoadTLSCredentials() (credentials.TransportCredentials, error) {
-	pemServerCA, err := os.ReadFile("certs/ca-cert.pem")
+	pemServerCA, err := os.ReadFile("../certs/ca-cert.pem")
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +162,7 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 		return nil, fmt.Errorf("failed to add server CA's certificate")
 	}
 
-	clientCert, err := tls.LoadX509KeyPair("certs/client-cert.pem", "certs/client-key.pem")
+	clientCert, err := tls.LoadX509KeyPair("../certs/client-cert.pem", "../certs/client-key.pem")
 	if err != nil {
 		return nil, err
 	}
