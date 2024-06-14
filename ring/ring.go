@@ -26,12 +26,12 @@ func InitRing(virtual int) *Ring {
 	return &Ring{Nodes: node.Nodes{}, Virtual: virtual, VirtualMap: make(map[string]string)}
 }
 
-func (r *Ring) Add(id string, host string, port int32) {
+func (r *Ring) Add(id string, host string, restPort int32, grpcPort int32) {
 	r.Lock()
 	defer r.Unlock()
 
 	if r.Virtual == 0 {
-		node := node.InitNode(id, host, port)
+		node := node.InitNode(id, host, restPort, grpcPort)
 		r.Nodes = append(r.Nodes, node)
 	} else {
 		// Calculate the range for virtual nodes based on the number of virtual nodes
@@ -41,7 +41,7 @@ func (r *Ring) Add(id string, host string, port int32) {
 			// Calculate the virtual node ID within the range
 			virtualNodeId := strconv.Itoa(int((hash(id) + uint32(virtualNodeRange*i)) % (1 << 31)))
 			virtualId := id + "-" + virtualNodeId
-			node := node.InitNode(virtualId, host, port)
+			node := node.InitNode(virtualId, host, restPort, grpcPort)
 			r.Nodes = append(r.Nodes, node)
 			r.VirtualMap[virtualId] = id // map virtual node to actual node
 		}
@@ -152,7 +152,7 @@ func PrintBucketDistributionStats(filename string, buckets []string, members []s
 		r := InitRing(virtualNodes)
 
 		for _, bucket := range buckets {
-			r.Add(bucket, "localhost", 8000)
+			r.Add(bucket, "localhost", 8080, 5005)
 		}
 
 		statistics := r.GetDistributionStatistics(members)
