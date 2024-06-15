@@ -76,6 +76,10 @@ func GetHashId(key string) uint32 {
 	return crc32.ChecksumIEEE([]byte(key))
 }
 
+func (node *Node) SetGrpcClient(c pb.CacheServiceClient) {
+	node.GrpcClient = c
+}
+
 type Nodes []*Node
 
 func (n Nodes) Len() int {

@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// ALL FOR DOCKER
+
 // REST BENCHMARKS
 func Benchmark10kConcurrentPuts(b *testing.B) {
 	for n := 0; n < b.N; n++ {

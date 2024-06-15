@@ -18,6 +18,7 @@ import (
 	"github.com/nathang15/go-tinystore/ring"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 )
 
 type Client struct {
@@ -38,6 +39,8 @@ func InitClient(configFile string, virtualNodes int) *Client {
 	}
 	r := ring.InitRing(virtualNodes)
 	for _, node := range nodesInfo.Nodes {
+		client := InitCacheClient(node.Host, int(node.GrpcPort))
+		node.SetGrpcClient(client)
 		r.Add(node.Id, node.Host, node.RestPort, node.GrpcPort)
 	}
 	return &Client{Info: nodesInfo, Ring: r, vNode: virtualNodes}
@@ -67,12 +70,10 @@ func (c *Client) GetForGrpc(key string) {
 	nodeId := c.Ring.Get(key)
 	nodeInfo := c.Info.Nodes[nodeId]
 
-	client := InitCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	res, err := client.Get(ctx, &pb.GetRequest{Key: key})
+	res, err := nodeInfo.GrpcClient.Get(ctx, &pb.GetRequest{Key: key})
 	if err != nil {
 		log.Fatalf("Error getting key %s: %v", key, err)
 		return
@@ -125,12 +126,10 @@ func (c *Client) PutForGrpc(key string, value string) {
 		return
 	}
 
-	client := InitCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	_, err := client.Put(ctx, &pb.PutRequest{Key: key, Value: value})
+	_, err := nodeInfo.GrpcClient.Put(ctx, &pb.PutRequest{Key: key, Value: value})
 	if err != nil {
 		log.Fatalf("Error putting key '%s' value '%s' into cache: %v", key, value, err)
 		return
@@ -143,7 +142,13 @@ func InitCacheClient(server_host string, server_port int) pb.CacheServiceClient 
 		log.Fatalf("failed to create credentials: %v", err)
 	}
 
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", server_host, server_port), grpc.WithTransportCredentials(creds))
+	var healthCheck = keepalive.ClientParameters{
+		Time:                10 * time.Second,
+		Timeout:             3 * time.Second,
+		PermitWithoutStream: true,
+	}
+
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", server_host, server_port), grpc.WithTransportCredentials(creds), grpc.WithKeepaliveParams(healthCheck))
 	if err != nil {
 		panic(err)
 	}

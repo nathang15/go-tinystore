@@ -9,12 +9,12 @@ import (
 type Node struct {
 	prev *Node
 	next *Node
-	key  int
-	val  int
+	key  string
+	val  string
 }
 
 type LRU struct {
-	cache    map[int]*Node
+	cache    map[string]*Node
 	head     *Node
 	tail     *Node
 	capacity int
@@ -24,9 +24,9 @@ type LRU struct {
 
 func Init(capacity int) LRU {
 	lru := LRU{
-		cache:    make(map[int]*Node, capacity),
-		head:     &Node{prev: nil, next: nil, key: -1, val: -1},
-		tail:     &Node{prev: nil, next: nil, key: -1, val: -1},
+		cache:    make(map[string]*Node, capacity),
+		head:     &Node{prev: nil, next: nil, key: "", val: ""},
+		tail:     &Node{prev: nil, next: nil, key: "", val: ""},
 		capacity: capacity,
 		size:     0,
 	}
@@ -35,7 +35,7 @@ func Init(capacity int) LRU {
 	return lru
 }
 
-func (lru *LRU) Get(key int) (int, error) {
+func (lru *LRU) Get(key string) (string, error) {
 	lru.mut.RLock()
 	defer lru.mut.RUnlock()
 	if node, existed := lru.cache[key]; existed {
@@ -43,10 +43,10 @@ func (lru *LRU) Get(key int) (int, error) {
 		return node.val, nil
 	}
 
-	return -1, errors.New("element not found")
+	return "", errors.New("element not found")
 }
 
-func (lru *LRU) Put(key int, value int) {
+func (lru *LRU) Put(key string, value string) {
 	lru.mut.Lock()
 	defer lru.mut.Unlock()
 	if node, existed := lru.cache[key]; existed {

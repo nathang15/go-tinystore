@@ -17,10 +17,8 @@ import (
 	"github.com/nathang15/go-tinystore/store"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 type CacheServer struct {
@@ -92,7 +90,7 @@ func (s *CacheServer) GetHandler(c *gin.Context) {
 			return
 		}
 
-		value, err := s.cache.Get(key)
+		value, err := s.cache.Get(c.Param("key"))
 		if err != nil {
 			res <- gin.H{"error": err.Error()}
 		} else {
@@ -125,7 +123,7 @@ func (s *CacheServer) PutHandler(c *gin.Context) {
 		return
 	}
 
-	s.cache.Put(key, value)
+	s.cache.Put(newPair.Key, newPair.Value)
 	c.IndentedJSON(http.StatusCreated, gin.H{"key": key, "value": value})
 }
 
@@ -201,30 +199,14 @@ func (s *CacheServer) RunHttpServer(port int) {
 }
 
 func (s *CacheServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
-	key, err := strconv.Atoi(req.Key)
-	if err != nil {
-		s.logger.Errorf("unable to convert %s to integer", req.Key)
-		return nil, status.Errorf(codes.InvalidArgument, "key must be integer")
-	}
-	value, err := s.cache.Get(key)
+	value, err := s.cache.Get(req.Key)
 	if err != nil {
 		return &pb.GetResponse{Data: "key not found"}, nil
 	}
-	strvalue := strconv.Itoa(value)
-	return &pb.GetResponse{Data: strvalue}, nil
+	return &pb.GetResponse{Data: value}, nil
 }
 
 func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty, error) {
-	key, err := strconv.Atoi(req.Key)
-	if err != nil {
-		s.logger.Errorf("unable to convert key %s to integer", req.Key)
-		return nil, status.Errorf(codes.InvalidArgument, "key must be integer")
-	}
-	value, err := strconv.Atoi(req.Value)
-	if err != nil {
-		s.logger.Errorf("unable to convert value %s to integer", req.Value)
-		return nil, status.Errorf(codes.InvalidArgument, "value must be integer")
-	}
-	s.cache.Put(key, value)
+	s.cache.Put(req.Key, req.Value)
 	return &empty.Empty{}, nil
 }
