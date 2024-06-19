@@ -18,7 +18,7 @@ type NodesInfo struct {
 type Node struct {
 	Id         string `json:"id"`
 	Host       string `json:"host"`
-	RestPort   int32  `json:"port"`
+	RestPort   int32  `json:"restPort"`
 	GrpcPort   int32  `json:"grpcPort"`
 	HashId     uint32
 	GrpcClient pb.CacheServiceClient
@@ -39,19 +39,12 @@ func InitNode(Id string, host string, restPort int32, grpcPort int32) *Node {
 }
 
 func LoadNodesConfig(configFile string) NodesInfo {
-	file, err := os.ReadFile(configFile)
-	if err != nil {
-		return NodesInfo{}
-	}
-
-	var nodesInfo NodesInfo
-	err = json.Unmarshal(file, &nodesInfo)
-	if err != nil {
-		return NodesInfo{}
-	}
+	file, _ := os.ReadFile(configFile)
+	nodesInfo := NodesInfo{}
+	_ = json.Unmarshal([]byte(file), &nodesInfo)
 
 	if len(nodesInfo.Nodes) == 0 {
-		nodesInfo.Nodes = make(map[string]*Node)
+		nodesInfo = NodesInfo{Nodes: make(map[string]*Node)}
 		defaultNode := InitNode("node0", "localhost", 8080, 5005)
 		nodesInfo.Nodes[defaultNode.Id] = defaultNode
 	} else {
@@ -59,7 +52,6 @@ func LoadNodesConfig(configFile string) NodesInfo {
 			nodeInfo.HashId = GetHashId(nodeInfo.Id)
 		}
 	}
-
 	return nodesInfo
 }
 

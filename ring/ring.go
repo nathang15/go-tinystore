@@ -3,6 +3,7 @@ package ring
 import (
 	"crypto/sha1"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -65,13 +66,14 @@ func (r *Ring) Remove(id string) error {
 
 	if r.Virtual == 0 {
 		// If no virtual nodes, simply remove the node with the matching ID
-		for _, n := range r.Nodes {
-			if n.Id != id {
-				newNodes = append(newNodes, n)
-			} else {
-				found = true
-			}
+		i := r.search(id)
+		if i >= r.Nodes.Len() || r.Nodes[i].Id != id {
+			return errors.New("node not found")
 		}
+
+		r.Nodes = append(r.Nodes[:i], r.Nodes[i+1:]...)
+
+		return nil
 	} else {
 		// Filter out nodes not associated with the removed node
 		for _, n := range r.Nodes {
@@ -86,7 +88,7 @@ func (r *Ring) Remove(id string) error {
 
 	// If the node was not found, return an error
 	if !found {
-		return fmt.Errorf("node not found")
+		return errors.New("node not found")
 	}
 
 	r.Nodes = newNodes

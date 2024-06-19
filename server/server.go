@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/nathang15/go-tinystore/node"
 	"github.com/nathang15/go-tinystore/pb"
-	"github.com/nathang15/go-tinystore/ring"
 	"github.com/nathang15/go-tinystore/store"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -30,7 +29,7 @@ const (
 )
 
 type CacheServer struct {
-	Ring            ring.Ring
+	// Ring            ring.Ring
 	router          *gin.Engine
 	cache           *store.LRU
 	logger          *zap.SugaredLogger
@@ -40,7 +39,7 @@ type CacheServer struct {
 	groupId         string
 	shutdownChannel chan bool
 	decisionChannel chan string
-	synced          chan bool
+	mutex           sync.Mutex
 	electionStatus  bool
 	pb.UnimplementedCacheServiceServer
 }
@@ -71,15 +70,12 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 		logger:          sugaredLogger,
 		nodesInfo:       nodesInfo,
 		nodeId:          nodeId,
-		shutdownChannel: make(chan bool, 1),
 		decisionChannel: make(chan string, 1),
-		synced:          make(chan bool, 1),
-		electionStatus:  NO_ELECTION,
 	}
 
 	//routes
-	router.GET("/get/:key", cacheServer.GetHandler)
-	router.POST("/put", cacheServer.PutHandler)
+	cacheServer.router.GET("/get/:key", cacheServer.GetHandler)
+	cacheServer.router.POST("/put", cacheServer.PutHandler)
 
 	//Set up TLS
 	credentials, err := LoadTLSCredentials()
@@ -94,50 +90,32 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 }
 
 // GetHandler Impementation
-func (s *CacheServer) GetHandler(c *gin.Context) {
+func (server *CacheServer) GetHandler(client *gin.Context) {
 	res := make(chan gin.H)
 	go func(ctx *gin.Context) {
-		key, err := strconv.Atoi(c.Param("key"))
+		value, err := server.cache.Get(client.Param("key"))
 		if err != nil {
-			s.logger.Errorf("Failed to parse key: %v", err)
-			return
-		}
-
-		value, err := s.cache.Get(c.Param("key"))
-		if err != nil {
-			res <- gin.H{"error": err.Error()}
+			res <- gin.H{"message": "key not found"}
 		} else {
-			res <- gin.H{"key": key, "value": value}
+			res <- gin.H{"value": value}
 		}
-	}(c.Copy())
-	c.IndentedJSON(http.StatusOK, <-res)
+	}(client.Copy())
+	client.IndentedJSON(http.StatusOK, <-res)
 }
 
 // PutHandler Impementation
-func (s *CacheServer) PutHandler(c *gin.Context) {
-	var newPair Pair
-	if err := c.BindJSON(&newPair); err != nil {
-		s.logger.Errorf("unable to deserialize key-value pair from json: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	key, err := strconv.Atoi(newPair.Key)
-	if err != nil {
-		s.logger.Errorf("unable to convert key to integer: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	value, err := strconv.Atoi(newPair.Value)
-	if err != nil {
-		s.logger.Errorf("unable to convert value to integer: %v", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	s.cache.Put(newPair.Key, newPair.Value)
-	c.IndentedJSON(http.StatusCreated, gin.H{"key": key, "value": value})
+func (server *CacheServer) PutHandler(client *gin.Context) {
+	res := make(chan gin.H)
+	go func(ctx *gin.Context) {
+		var newPair Pair
+		if err := client.BindJSON(&newPair); err != nil {
+			server.logger.Errorf("unable to deserialize key-value pair from json")
+			return
+		}
+		server.cache.Put(newPair.Key, newPair.Value)
+		res <- gin.H{"key": newPair.Key, "value": newPair.Value}
+	}(client.Copy())
+	client.IndentedJSON(http.StatusCreated, <-res)
 }
 
 // Set up mTLS config and creds
@@ -224,69 +202,60 @@ func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty
 	return &empty.Empty{}, nil
 }
 
-func (s *CacheServer) ServerInitCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+func (s *CacheServer) ServerInitCacheClient(serverHost string, serverPort int) (pb.CacheServiceClient, error) {
 	creds, err := LoadTLSCredentials()
 	if err != nil {
 		s.logger.Fatalf("failed to create credentials: %v", err)
 	}
 
-	var kacp = keepalive.ClientParameters{
+	var healthCheck = keepalive.ClientParameters{
 		Time:                8 * time.Second,
 		Timeout:             time.Second,
 		PermitWithoutStream: true,
 	}
 
-	addr := fmt.Sprintf("%s:%d", server_host, server_port)
+	addr := fmt.Sprintf("%s:%d", serverHost, serverPort)
 	conn, err := grpc.NewClient(
 		addr,
 		grpc.WithTransportCredentials(creds),
-		grpc.WithKeepaliveParams(kacp),
+		grpc.WithKeepaliveParams(healthCheck),
 		grpc.WithTimeout(time.Duration(time.Second)),
 	)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return pb.NewCacheServiceClient(conn)
+	return pb.NewCacheServiceClient(conn), nil
 }
 
 func (s *CacheServer) RegisterNodeInternal() {
-	for {
-		if s.leaderId == NO_LEADER {
-			time.Sleep(time.Second)
+	s.logger.Infof("attempting to register %s with cluster", s.nodeId)
+	localNode, _ := s.nodesInfo.Nodes[s.nodeId]
+	for _, node := range s.nodesInfo.Nodes {
+		if node.Id == s.nodeId {
 			continue
 		}
-		break
-	}
+		req := pb.Node{
+			Id:       localNode.Id,
+			Host:     localNode.Host,
+			RestPort: localNode.RestPort,
+			GrpcPort: localNode.GrpcPort,
+		}
+		client, err := s.ServerInitCacheClient(node.Host, int(node.GrpcPort))
+		if err != nil {
+			s.logger.Errorf("unable to connect to node %s", node.Id)
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		_, err = client.RegisterNodeWithCluster(ctx, &req)
+		if err != nil {
+			s.logger.Infof("error registering node %s with cluster: %v", s.nodeId, err)
+			continue
+		}
 
-	leader := s.nodesInfo.Nodes[s.leaderId]
-	local_node := s.nodesInfo.Nodes[s.nodeId]
-	req := pb.Node{
-		Id:       local_node.Id,
-		Host:     local_node.Host,
-		RestPort: local_node.RestPort,
-		GrpcPort: local_node.GrpcPort,
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+		s.logger.Infof("node %s is registered with cluster", s.nodeId)
 
-	if leader.GrpcClient == nil {
-		client := s.ServerInitCacheClient(leader.Host, int(leader.GrpcPort))
-		leader.SetGrpcClient(client)
-	}
-
-	_, err := leader.GrpcClient.RegisterNodeWithCluster(ctx, &req)
-	if err != nil {
-		s.logger.Infof("error registering node %s with cluster: %v", s.nodeId, err)
 		return
-	}
-	s.logger.Infof("registered node %s with cluster", s.nodeId)
-}
-
-func (s *CacheServer) SetAllGrpcClients() {
-	for _, node := range s.nodesInfo.Nodes {
-		c := s.ServerInitCacheClient(node.Host, int(node.GrpcPort))
-		node.SetGrpcClient(c)
-		s.logger.Infof("created grpc client to %s", node.Id)
 	}
 }

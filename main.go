@@ -10,26 +10,34 @@ import (
 )
 
 func main() {
-	gPort := flag.Int("grpc-port", 5005, "gRPC Server listens to this port")
-	port := flag.Int("port", 8080, "HTTP Server listens to this port")
-	capacity := flag.Int("capacity", 5, "LRU cache capacity")
-	verbose := flag.Bool("verbose", false, "Enable verbose logging")
-	configFile := flag.String("config", "", "Path to nodes configuration file")
+	grpc_port := flag.Int("grpc-port", 5005, "port number for gRPC server")
+	capacity := flag.Int("capacity", 5, "lru capacity")
+	verbose := flag.Bool("verbose", false, "events log")
+	config_file := flag.String("config", "", "JSON config file")
+	rest_port := flag.Int("rest-port", 8080, "enable REST API for client requests too")
+
 	flag.Parse()
 
-	// TCP Connection
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *gPort))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", *grpc_port))
 	if err != nil {
 		panic(err)
 	}
 
-	grpcServer, cacheServer := server.InitCacheServer(*capacity, *configFile, *verbose)
-	log.Printf("Running gRPC server on port :%d", *gPort)
-	go grpcServer.Serve(listener)
-	cacheServer.RunElection()
-	go cacheServer.MonitorLeaderStatus()
-	log.Printf("Running REST API server on port %d...", *port)
-	cacheServer.RunHttpServer(*port)
+	grpc_server, cache_server := server.InitCacheServer(*capacity, *config_file, *verbose)
+
+	log.Printf("Running gRPC server on: %d", *grpc_port)
+	go grpc_server.Serve(listener)
+
+	// cache_server.SetAllGrpcClients()
+
+	cache_server.RegisterNodeInternal()
+
+	cache_server.RunElection()
+
+	go cache_server.MonitorLeaderStatus()
+
+	log.Printf("Running REST API server on: %d", *rest_port)
+	cache_server.RunHttpServer(*rest_port)
 }
 
 // OUTPUT DISTRIBUTT
