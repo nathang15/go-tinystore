@@ -10,7 +10,7 @@ import (
 
 // REST BENCHMARKS
 func Test10kConcurrentPuts(t *testing.T) {
-	c := InitClient("../configs/nodes.json", 10)
+	c := InitClient("../configs/nodes.json", 100)
 	c.StartClusterConfigWatcher()
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -23,6 +23,7 @@ func Test10kConcurrentPuts(t *testing.T) {
 				v := strconv.Itoa(j)
 				err := c.Put(v, v)
 				if err != nil {
+					t.Logf("Error putting key %s: %v", v, err)
 					mutex.Lock()
 					miss += 1
 					mutex.Unlock()
@@ -31,7 +32,7 @@ func Test10kConcurrentPuts(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	t.Logf("Cache misses: %d/100,000 (%f%%)", int(miss), miss/100000)
+	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
 
 // func Benchmark50kConcurrentPuts(b *testing.B) {

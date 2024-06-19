@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/nathang15/go-tinystore/node"
@@ -62,8 +63,14 @@ func InitClient(configFile string, virtualNodes int) *Client {
 	for _, n := range clusterConfig {
 		infoMap[n.Id] = node.InitNode(n.Id, n.Host, n.RestPort, n.GrpcPort)
 
-		ring.Add(n.Id, n.Host, n.RestPort, n.GrpcPort)
-
+		if virtualNodes == 0 {
+			ring.Add(n.Id, n.Host, n.RestPort, n.GrpcPort)
+		} else {
+			for i := 0; i < virtualNodes; i++ {
+				virtualNodeID := fmt.Sprintf("%s-%d", n.Id, i)
+				ring.Add(virtualNodeID, n.Host, n.RestPort, n.GrpcPort)
+			}
+		}
 		c, err := InitCacheClient(n.Host, int(n.GrpcPort))
 		if err != nil {
 			log.Printf("error: %v", err)
@@ -77,7 +84,8 @@ func InitClient(configFile string, virtualNodes int) *Client {
 
 func (c *Client) Get(key string) (string, error) {
 	nodeId := c.Ring.Get(key)
-	nodeInfo := c.Info.Nodes[nodeId]
+	physicalNodeId := c.getPhysicalNodeId(nodeId)
+	nodeInfo := c.Info.Nodes[physicalNodeId]
 
 	resp, err := http.Get(fmt.Sprintf("http://%s:%d/get", nodeInfo.Host, nodeInfo.RestPort))
 	if err != nil {
@@ -97,7 +105,8 @@ func (c *Client) Get(key string) (string, error) {
 
 func (c *Client) GetForGrpc(key string) (string, error) {
 	nodeId := c.Ring.Get(key)
-	nodeInfo := c.Info.Nodes[nodeId]
+	physicalNodeId := c.getPhysicalNodeId(nodeId)
+	nodeInfo := c.Info.Nodes[physicalNodeId]
 
 	if nodeInfo.GrpcClient == nil {
 		client, err := InitCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
@@ -120,12 +129,13 @@ func (c *Client) GetForGrpc(key string) (string, error) {
 
 func (c *Client) Put(key string, value string) error {
 	nodeId := c.Ring.Get(key)
-	if nodeId == "" {
+	physicalNodeId := c.getPhysicalNodeId(nodeId)
+	if physicalNodeId == "" {
 		return fmt.Errorf("no node found for key: %s", key)
 	}
-	nodeInfo, exists := c.Info.Nodes[nodeId]
+	nodeInfo, exists := c.Info.Nodes[physicalNodeId]
 	if !exists {
-		return fmt.Errorf("no node information for node ID: %s", nodeId)
+		return fmt.Errorf("no node information for node ID: %s", physicalNodeId)
 	}
 
 	payload := Payload{Key: key, Value: value}
@@ -147,7 +157,8 @@ func (c *Client) Put(key string, value string) error {
 
 func (client *Client) PutForGrpc(key string, value string) error {
 	nodeId := client.Ring.Get(key)
-	nodeInfo := client.Info.Nodes[nodeId]
+	physicalNodeId := client.getPhysicalNodeId(nodeId)
+	nodeInfo := client.Info.Nodes[physicalNodeId]
 
 	if nodeInfo.GrpcClient == nil {
 		client, err := InitCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
@@ -294,4 +305,12 @@ func (c *Client) StartClusterConfigWatcher() {
 			time.Sleep(3 * time.Second)
 		}
 	}()
+}
+
+func (c *Client) getPhysicalNodeId(virtualNodeId string) string {
+	parts := strings.Split(virtualNodeId, "-")
+	if len(parts) > 1 {
+		return parts[0]
+	}
+	return virtualNodeId
 }
