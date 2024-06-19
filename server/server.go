@@ -8,30 +8,39 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/nathang15/go-tinystore/node"
 	"github.com/nathang15/go-tinystore/pb"
+	"github.com/nathang15/go-tinystore/ring"
 	"github.com/nathang15/go-tinystore/store"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 )
 
+const (
+	PROD_DB = 0
+	TEST_DB = 1
+	SUCCESS = "OK"
+)
+
 type CacheServer struct {
+	Ring            ring.Ring
 	router          *gin.Engine
 	cache           *store.LRU
 	logger          *zap.SugaredLogger
 	nodesInfo       node.NodesInfo
 	leaderId        string
 	nodeId          string
+	groupId         string
 	shutdownChannel chan bool
 	decisionChannel chan string
 	synced          chan bool
-	mutex           sync.Mutex
 	electionStatus  bool
 	pb.UnimplementedCacheServiceServer
 }
@@ -46,6 +55,11 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 	nodesInfo := node.LoadNodesConfig(configFile)
 	nodeId := node.GetCurrentNodeId(nodesInfo)
 
+	if _, ok := nodesInfo.Nodes[nodeId]; !ok {
+		host, _ := os.Hostname()
+		nodesInfo.Nodes[nodeId] = node.InitNode(nodeId, host, 8080, 5005)
+	}
+
 	router := gin.New()
 	router.Use(gin.Recovery())
 
@@ -57,7 +71,6 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 		logger:          sugaredLogger,
 		nodesInfo:       nodesInfo,
 		nodeId:          nodeId,
-		leaderId:        NO_LEADER,
 		shutdownChannel: make(chan bool, 1),
 		decisionChannel: make(chan string, 1),
 		synced:          make(chan bool, 1),
@@ -161,7 +174,7 @@ func NewGrpcClientForNode(node *node.Node) pb.CacheServiceClient {
 		panic(fmt.Sprintf("Failed to create credentials: %v", err))
 	}
 
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", node.Host, node.GrpcPort), grpc.WithTransportCredentials(creds))
 	if err != nil {
 		panic(fmt.Sprintf("Failed to dial: %v", err))
 	}
@@ -209,4 +222,71 @@ func (s *CacheServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetRespo
 func (s *CacheServer) Put(ctx context.Context, req *pb.PutRequest) (*empty.Empty, error) {
 	s.cache.Put(req.Key, req.Value)
 	return &empty.Empty{}, nil
+}
+
+func (s *CacheServer) ServerInitCacheClient(server_host string, server_port int) pb.CacheServiceClient {
+	creds, err := LoadTLSCredentials()
+	if err != nil {
+		s.logger.Fatalf("failed to create credentials: %v", err)
+	}
+
+	var kacp = keepalive.ClientParameters{
+		Time:                8 * time.Second,
+		Timeout:             time.Second,
+		PermitWithoutStream: true,
+	}
+
+	addr := fmt.Sprintf("%s:%d", server_host, server_port)
+	conn, err := grpc.NewClient(
+		addr,
+		grpc.WithTransportCredentials(creds),
+		grpc.WithKeepaliveParams(kacp),
+		grpc.WithTimeout(time.Duration(time.Second)),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	return pb.NewCacheServiceClient(conn)
+}
+
+func (s *CacheServer) RegisterNodeInternal() {
+	for {
+		if s.leaderId == NO_LEADER {
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
+
+	leader := s.nodesInfo.Nodes[s.leaderId]
+	local_node := s.nodesInfo.Nodes[s.nodeId]
+	req := pb.Node{
+		Id:       local_node.Id,
+		Host:     local_node.Host,
+		RestPort: local_node.RestPort,
+		GrpcPort: local_node.GrpcPort,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	if leader.GrpcClient == nil {
+		client := s.ServerInitCacheClient(leader.Host, int(leader.GrpcPort))
+		leader.SetGrpcClient(client)
+	}
+
+	_, err := leader.GrpcClient.RegisterNodeWithCluster(ctx, &req)
+	if err != nil {
+		s.logger.Infof("error registering node %s with cluster: %v", s.nodeId, err)
+		return
+	}
+	s.logger.Infof("registered node %s with cluster", s.nodeId)
+}
+
+func (s *CacheServer) SetAllGrpcClients() {
+	for _, node := range s.nodesInfo.Nodes {
+		c := s.ServerInitCacheClient(node.Host, int(node.GrpcPort))
+		node.SetGrpcClient(c)
+		s.logger.Infof("created grpc client to %s", node.Id)
+	}
 }

@@ -4,7 +4,9 @@ package node
 import (
 	"encoding/json"
 	"hash/crc32"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/nathang15/go-tinystore/pb"
 )
@@ -69,15 +71,31 @@ func GetCurrentNodeId(config NodesInfo) string {
 			return node.Id
 		}
 	}
-	return "node0"
+	return randomSeq(5)
+}
+
+func GetRandom(nodes []*Node) *Node {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+	randomIndex := rand.Intn(len(nodes))
+	return nodes[randomIndex]
+}
+
+func randomSeq(n int) string {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+	letters := []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
 
 func GetHashId(key string) uint32 {
 	return crc32.ChecksumIEEE([]byte(key))
 }
 
-func (node *Node) SetGrpcClient(c pb.CacheServiceClient) {
-	node.GrpcClient = c
+func (node *Node) SetGrpcClient(client pb.CacheServiceClient) {
+	node.GrpcClient = client
 }
 
 type Nodes []*Node

@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/nathang15/go-tinystore/pb"
 )
 
@@ -14,7 +15,6 @@ const (
 	RUNNING     = true
 	NO_ELECTION = false
 	NO_LEADER   = "NO LEADER"
-	SUCCESS     = "OK"
 )
 
 // Leader Election with bully algorithm
@@ -34,11 +34,10 @@ func (s *CacheServer) RunElection() {
 			continue
 		}
 
-		client := NewGrpcClientForNode(node)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		res, err := client.GetPid(ctx, &pb.PidRequest{CallerPid: pid})
+		res, err := node.GrpcClient.GetPid(ctx, &pb.PidRequest{CallerPid: pid})
 		if err != nil {
 			s.logger.Infof("Error getting pid from node %d: %v", node.Id, err)
 			continue
@@ -51,7 +50,7 @@ func (s *CacheServer) RunElection() {
 			defer cancel()
 
 			s.logger.Infof("Sending election request to node %d", node.Id)
-			_, err = client.RequestElection(ctx, &pb.ElectionRequest{CallerPid: pid, CallerNodeId: s.nodeId})
+			_, err = node.GrpcClient.RequestElection(ctx, &pb.ElectionRequest{CallerPid: pid, CallerNodeId: s.nodeId})
 			if err != nil {
 				s.logger.Infof("Error sending election request to node %d: %v", node.Id, err)
 			}
@@ -88,11 +87,10 @@ func (s *CacheServer) SetNewLeader(newLeader string) {
 			continue
 		}
 
-		client := NewGrpcClientForNode(node)
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		_, err := client.UpdateLeader(ctx, &pb.NewLeaderAnnouncement{LeaderId: newLeader})
+		_, err := node.GrpcClient.UpdateLeader(ctx, &pb.NewLeaderAnnouncement{LeaderId: newLeader})
 		if err != nil {
 			s.logger.Infof("Election leader announcement to node %s error: %v", node.Id, err)
 			continue
@@ -103,40 +101,69 @@ func (s *CacheServer) SetNewLeader(newLeader string) {
 	s.logger.Infof("New leader set: %s", s.leaderId)
 }
 
+// Returns current leader
+func (s *CacheServer) GetLeader(ctx context.Context, request *pb.LeaderRequest) (*pb.LeaderResponse, error) {
+	// while there is no leader, run election
+	for {
+		if s.leaderId != NO_LEADER {
+			break
+		}
+		s.RunElection()
+
+		// if no leader was elected, wait 3 seconds then run another election
+		if s.leaderId == NO_LEADER {
+			s.logger.Info("No leader elected, waiting 3 seconds before trying again...")
+			time.Sleep(3 * time.Second)
+		}
+	}
+	return &pb.LeaderResponse{Id: s.leaderId}, nil
+}
+
 // leader status monitoring
 func (s *CacheServer) MonitorLeaderStatus() {
-	s.logger.Info("Monitoring leader status")
+	s.logger.Info("Leader heartbeat monitor starting...")
 
-	tick := time.NewTicker(time.Second)
-	defer tick.Stop()
-
+	ticker := time.NewTicker(time.Second)
 	for {
-		select {
-		case <-tick.C:
+		<-ticker.C
+
+		if s.leaderId != s.nodeId {
 			if !s.IsLeaderUp() {
-				s.logger.Info("Leader is down, running election")
+				s.logger.Info("Leader status lost, running new election")
 				s.RunElection()
-				s.logger.Info("Selected new leader!")
-			} else {
-				// Periodically call GetStatus to check the heartbeat
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				s.logger.Info("Selected new leader! Continue monitoring")
+			}
+			select {
+			case <-s.shutdownChannel:
+				s.logger.Info("Received shutdown signal")
+				break
+			case <-time.After(time.Second):
+				continue
+			}
+
+		} else {
+			modified := false
+			for _, node := range s.Ring.Nodes {
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 				defer cancel()
 
-				response, err := s.GetStatus(ctx, &pb.StatusRequest{CallerNodeId: s.nodeId})
+				_, err := node.GrpcClient.GetStatus(ctx, &pb.StatusRequest{CallerNodeId: s.nodeId})
 				if err != nil {
-					s.logger.Infof("Error getting status from leader: %v", err)
-				} else {
-					s.logger.Infof("Received heartbeat status: %s from node %s", response.Status, response.NodeId)
+					s.logger.Infof("Node %s healthcheck returned error, removing from cluster", node.Id, err)
+					delete(s.nodesInfo.Nodes, node.Id)
+					s.Ring.Remove(node.Id)
+					modified = true
 				}
 			}
-		case <-s.shutdownChannel:
-			s.logger.Info("Shutting down leader status monitoring")
-			return
+
+			if modified {
+				s.updateClusterConfigInternal()
+			}
 		}
 	}
 }
 
-func (s *CacheServer) GetStatus(ctx context.Context, req *pb.StatusRequest) (*pb.StatusResponse, error) {
+func (s *CacheServer) GetStatus(ctx context.Context, req *pb.StatusRequest) (*empty.Empty, error) {
 	var status string
 	if s.nodeId == s.leaderId {
 		status = LEADER
@@ -145,7 +172,7 @@ func (s *CacheServer) GetStatus(ctx context.Context, req *pb.StatusRequest) (*pb
 	}
 
 	s.logger.Infof("Node %s returning status %s to node %s", s.nodeId, status, req.CallerNodeId)
-	return &pb.StatusResponse{Status: status, NodeId: s.nodeId}, nil
+	return &empty.Empty{}, nil
 }
 
 func (s *CacheServer) IsLeaderUp() bool {
@@ -164,17 +191,15 @@ func (s *CacheServer) IsLeaderUp() bool {
 		return false
 	}
 
-	client := NewGrpcClientForNode(leader)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	response, err := client.GetStatus(ctx, &pb.StatusRequest{CallerNodeId: s.nodeId})
+	_, err := leader.GrpcClient.GetStatus(ctx, &pb.StatusRequest{CallerNodeId: s.nodeId})
 	if err != nil {
 		s.logger.Infof("Leader %s is down: %v", s.leaderId, err)
 		return false
 	}
 
-	s.logger.Infof("Received status %s from leader %s", response.Status, s.leaderId)
 	return true
 }
 

@@ -29,12 +29,13 @@ type CacheServiceClient interface {
 	// Elections
 	GetPid(ctx context.Context, in *PidRequest, opts ...grpc.CallOption) (*PidResponse, error)
 	GetLeader(ctx context.Context, in *LeaderRequest, opts ...grpc.CallOption) (*LeaderResponse, error)
-	GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UpdateLeader(ctx context.Context, in *NewLeaderAnnouncement, opts ...grpc.CallOption) (*GenericResponse, error)
 	RequestElection(ctx context.Context, in *ElectionRequest, opts ...grpc.CallOption) (*GenericResponse, error)
-	// Replication and synchronization
-	RequestSync(ctx context.Context, in *RequestSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	SyncComplete(ctx context.Context, in *SyncCompleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Cluster management
+	GetClusterConfig(ctx context.Context, in *ClusterConfigRequest, opts ...grpc.CallOption) (*ClusterConfig, error)
+	UpdateClusterConfig(ctx context.Context, in *ClusterConfig, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RegisterNodeWithCluster(ctx context.Context, in *Node, opts ...grpc.CallOption) (*GenericResponse, error)
 }
 
 type cacheServiceClient struct {
@@ -81,8 +82,8 @@ func (c *cacheServiceClient) GetLeader(ctx context.Context, in *LeaderRequest, o
 	return out, nil
 }
 
-func (c *cacheServiceClient) GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
-	out := new(StatusResponse)
+func (c *cacheServiceClient) GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, "/pb.CacheService/GetStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -108,18 +109,27 @@ func (c *cacheServiceClient) RequestElection(ctx context.Context, in *ElectionRe
 	return out, nil
 }
 
-func (c *cacheServiceClient) RequestSync(ctx context.Context, in *RequestSyncRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/RequestSync", in, out, opts...)
+func (c *cacheServiceClient) GetClusterConfig(ctx context.Context, in *ClusterConfigRequest, opts ...grpc.CallOption) (*ClusterConfig, error) {
+	out := new(ClusterConfig)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/GetClusterConfig", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *cacheServiceClient) SyncComplete(ctx context.Context, in *SyncCompleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *cacheServiceClient) UpdateClusterConfig(ctx context.Context, in *ClusterConfig, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, "/pb.CacheService/SyncComplete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/UpdateClusterConfig", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *cacheServiceClient) RegisterNodeWithCluster(ctx context.Context, in *Node, opts ...grpc.CallOption) (*GenericResponse, error) {
+	out := new(GenericResponse)
+	err := c.cc.Invoke(ctx, "/pb.CacheService/RegisterNodeWithCluster", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -136,12 +146,13 @@ type CacheServiceServer interface {
 	// Elections
 	GetPid(context.Context, *PidRequest) (*PidResponse, error)
 	GetLeader(context.Context, *LeaderRequest) (*LeaderResponse, error)
-	GetStatus(context.Context, *StatusRequest) (*StatusResponse, error)
+	GetStatus(context.Context, *StatusRequest) (*emptypb.Empty, error)
 	UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error)
 	RequestElection(context.Context, *ElectionRequest) (*GenericResponse, error)
-	// Replication and synchronization
-	RequestSync(context.Context, *RequestSyncRequest) (*emptypb.Empty, error)
-	SyncComplete(context.Context, *SyncCompleteRequest) (*emptypb.Empty, error)
+	// Cluster management
+	GetClusterConfig(context.Context, *ClusterConfigRequest) (*ClusterConfig, error)
+	UpdateClusterConfig(context.Context, *ClusterConfig) (*emptypb.Empty, error)
+	RegisterNodeWithCluster(context.Context, *Node) (*GenericResponse, error)
 	mustEmbedUnimplementedCacheServiceServer()
 }
 
@@ -161,7 +172,7 @@ func (UnimplementedCacheServiceServer) GetPid(context.Context, *PidRequest) (*Pi
 func (UnimplementedCacheServiceServer) GetLeader(context.Context, *LeaderRequest) (*LeaderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetLeader not implemented")
 }
-func (UnimplementedCacheServiceServer) GetStatus(context.Context, *StatusRequest) (*StatusResponse, error) {
+func (UnimplementedCacheServiceServer) GetStatus(context.Context, *StatusRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
 }
 func (UnimplementedCacheServiceServer) UpdateLeader(context.Context, *NewLeaderAnnouncement) (*GenericResponse, error) {
@@ -170,11 +181,14 @@ func (UnimplementedCacheServiceServer) UpdateLeader(context.Context, *NewLeaderA
 func (UnimplementedCacheServiceServer) RequestElection(context.Context, *ElectionRequest) (*GenericResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RequestElection not implemented")
 }
-func (UnimplementedCacheServiceServer) RequestSync(context.Context, *RequestSyncRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RequestSync not implemented")
+func (UnimplementedCacheServiceServer) GetClusterConfig(context.Context, *ClusterConfigRequest) (*ClusterConfig, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetClusterConfig not implemented")
 }
-func (UnimplementedCacheServiceServer) SyncComplete(context.Context, *SyncCompleteRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SyncComplete not implemented")
+func (UnimplementedCacheServiceServer) UpdateClusterConfig(context.Context, *ClusterConfig) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateClusterConfig not implemented")
+}
+func (UnimplementedCacheServiceServer) RegisterNodeWithCluster(context.Context, *Node) (*GenericResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterNodeWithCluster not implemented")
 }
 func (UnimplementedCacheServiceServer) mustEmbedUnimplementedCacheServiceServer() {}
 
@@ -315,38 +329,56 @@ func _CacheService_RequestElection_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CacheService_RequestSync_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RequestSyncRequest)
+func _CacheService_GetClusterConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClusterConfigRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CacheServiceServer).RequestSync(ctx, in)
+		return srv.(CacheServiceServer).GetClusterConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.CacheService/RequestSync",
+		FullMethod: "/pb.CacheService/GetClusterConfig",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).RequestSync(ctx, req.(*RequestSyncRequest))
+		return srv.(CacheServiceServer).GetClusterConfig(ctx, req.(*ClusterConfigRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _CacheService_SyncComplete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SyncCompleteRequest)
+func _CacheService_UpdateClusterConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClusterConfig)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CacheServiceServer).SyncComplete(ctx, in)
+		return srv.(CacheServiceServer).UpdateClusterConfig(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.CacheService/SyncComplete",
+		FullMethod: "/pb.CacheService/UpdateClusterConfig",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CacheServiceServer).SyncComplete(ctx, req.(*SyncCompleteRequest))
+		return srv.(CacheServiceServer).UpdateClusterConfig(ctx, req.(*ClusterConfig))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _CacheService_RegisterNodeWithCluster_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Node)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CacheServiceServer).RegisterNodeWithCluster(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/pb.CacheService/RegisterNodeWithCluster",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CacheServiceServer).RegisterNodeWithCluster(ctx, req.(*Node))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -387,12 +419,16 @@ var CacheService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _CacheService_RequestElection_Handler,
 		},
 		{
-			MethodName: "RequestSync",
-			Handler:    _CacheService_RequestSync_Handler,
+			MethodName: "GetClusterConfig",
+			Handler:    _CacheService_GetClusterConfig_Handler,
 		},
 		{
-			MethodName: "SyncComplete",
-			Handler:    _CacheService_SyncComplete_Handler,
+			MethodName: "UpdateClusterConfig",
+			Handler:    _CacheService_UpdateClusterConfig_Handler,
+		},
+		{
+			MethodName: "RegisterNodeWithCluster",
+			Handler:    _CacheService_RegisterNodeWithCluster_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
