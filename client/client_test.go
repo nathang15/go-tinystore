@@ -10,7 +10,7 @@ import (
 
 // REST BENCHMARKS
 func Test10kConcurrentPuts(t *testing.T) {
-	c := InitClient("../configs/nodes.json", 0)
+	c := InitClient("../configs/nodes.json", 10)
 	c.StartClusterConfigWatcher()
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
