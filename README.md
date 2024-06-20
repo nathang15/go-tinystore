@@ -14,7 +14,7 @@
 protoc service.proto --go_out=.     
 protoc --go-grpc_out=. service.proto
 
-## CREDIT
+## Reference
 
 - [Setup mTLS](https://dev.to/techschoolguru/a-complete-overview-of-ssl-tls-and-its-cryptographic-system-36pd)
 - [Design](https://www.youtube.com/watch?v=iuqZvajTOyA&t=920s)
