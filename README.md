@@ -1,6 +1,6 @@
-# go tinystore
+# Distributed cache implementation 
 
-## This is for learning purposes so the implementation might not be correct or performant.
+## ⚠️This is for learning purposes so the implementation might not be correct or performant. See credit
 
 ### Features:
 - LRU cache
@@ -9,11 +9,11 @@
 - Bully algorithm for leader election of cluster.
 - Dynamic node can join/leave cluster and every other config in consistent hashing and leader will be updated instanteneously.
 - Therefore, it has no single point of failure as there is always guaranteed to have a leader.
-Distributed cache implementation:
-
-# CREDIT
-
-#### command to change proto:
-
+- 
+#### How to run:
 protoc service.proto --go_out=.     
 protoc --go-grpc_out=. service.proto
+
+## CREDIT
+
+- [Setup mTLS](https://dev.to/techschoolguru/a-complete-overview-of-ssl-tls-and-its-cryptographic-system-36pd)
