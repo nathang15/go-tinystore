@@ -17,3 +17,6 @@ protoc --go-grpc_out=. service.proto
 ## CREDIT
 
 - [Setup mTLS](https://dev.to/techschoolguru/a-complete-overview-of-ssl-tls-and-its-cryptographic-system-36pd)
+- [Design](https://www.youtube.com/watch?v=iuqZvajTOyA&t=920s)
+- [Consistent hash](https://www.youtube.com/watch?v=UF9Iqmg94tk&t=359s)
+- [Bully algo](https://lass.cs.umass.edu/~shenoy/courses/spring22/lectures/Lec14_notes.pdf)

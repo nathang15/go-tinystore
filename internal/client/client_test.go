@@ -9,8 +9,9 @@ import (
 // ALL FOR DOCKER
 
 // REST TESTS
-func Test10kConcurrentPuts(t *testing.T) {
-	c := InitClient("../configs/nodes.json", 10)
+
+func Test10kPutsNoVnode(t *testing.T) {
+	c := InitClient("../../configs/nodes.json", 0)
 	c.StartClusterConfigWatcher()
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -35,8 +36,34 @@ func Test10kConcurrentPuts(t *testing.T) {
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
 
-func Test50kConcurrentPuts(t *testing.T) {
-	c := InitClient("../configs/nodes.json", 10)
+func Test10kPuts(t *testing.T) {
+	c := InitClient("../../configs/nodes.json", 10)
+	c.StartClusterConfigWatcher()
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
+	miss := 0.0
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 1; j <= 1000; j++ {
+				v := strconv.Itoa(j)
+				err := c.Put(v, v)
+				if err != nil {
+					t.Logf("Error putting key %s: %v", v, err)
+					mutex.Lock()
+					miss += 1
+					mutex.Unlock()
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
+}
+
+func Test50kPuts(t *testing.T) {
+	c := InitClient("../../configs/nodes.json", 10)
 	c.StartClusterConfigWatcher()
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -89,8 +116,33 @@ func Test50kConcurrentPuts(t *testing.T) {
 // }
 
 // GRPC TESTS
-func Test10kConcurrentGRPCPuts(t *testing.T) {
-	c := InitClient("../configs/nodes.json", 100)
+func Test10kGRPCPutsNoVnode(t *testing.T) {
+	c := InitClient("../../configs/nodes.json", 0)
+	c.StartClusterConfigWatcher()
+	var wg sync.WaitGroup
+	var mutex sync.Mutex
+	miss := 0.0
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 1; j <= 1000; j++ {
+				v := strconv.Itoa(j)
+				err := c.PutForGrpc(v, v)
+				if err != nil {
+					t.Logf("Error putting key %s: %v", v, err)
+					mutex.Lock()
+					miss += 1
+					mutex.Unlock()
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
+}
+func Test10kGRPCPuts(t *testing.T) {
+	c := InitClient("../../configs/nodes.json", 10)
 	c.StartClusterConfigWatcher()
 	var wg sync.WaitGroup
 	var mutex sync.Mutex
@@ -115,8 +167,8 @@ func Test10kConcurrentGRPCPuts(t *testing.T) {
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
 
-func Test50kConcurrentGRPCPuts(t *testing.T) {
-	c := InitClient("../configs/nodes.json", 100)
+func Test50kGRPCPuts(t *testing.T) {
+	c := InitClient("../../configs/nodes.json", 10)
 	c.StartClusterConfigWatcher()
 	var wg sync.WaitGroup
 	var mutex sync.Mutex

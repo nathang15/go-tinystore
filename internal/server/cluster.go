@@ -6,7 +6,7 @@ import (
 	"time"
 
 	empty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/nathang15/go-tinystore/node"
+	"github.com/nathang15/go-tinystore/internal/node"
 	"github.com/nathang15/go-tinystore/pb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

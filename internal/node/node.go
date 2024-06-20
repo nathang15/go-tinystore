@@ -24,10 +24,6 @@ type Node struct {
 	GrpcClient pb.CacheServiceClient
 }
 
-const (
-	ErrNodeNotFound = -1
-)
-
 func InitNode(Id string, host string, restPort int32, grpcPort int32) *Node {
 	return &Node{
 		Id:       Id,

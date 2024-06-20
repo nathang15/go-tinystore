@@ -6,7 +6,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/nathang15/go-tinystore/server"
+	"github.com/nathang15/go-tinystore/internal/server"
 )
 
 func main() {
@@ -28,8 +28,6 @@ func main() {
 	log.Printf("Running gRPC server on: %d", *grpc_port)
 	go grpc_server.Serve(listener)
 
-	// cache_server.SetAllGrpcClients()
-
 	cache_server.RegisterNodeInternal()
 
 	cache_server.RunElection()
@@ -38,9 +36,6 @@ func main() {
 
 	log.Printf("Running REST API server on: %d", *rest_port)
 	cache_server.RunHttpServer(*rest_port)
-}
 
-// OUTPUT DISTRIBUTT
-// func main() {
-// 	ring.PrintBucketDistribution()
-// }
+	// ring.PrintBucketDistribution()
+}

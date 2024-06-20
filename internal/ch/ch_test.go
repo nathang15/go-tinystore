@@ -1,16 +1,16 @@
-package ring
+package ch
 
 import (
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/nathang15/go-tinystore/node"
+	"github.com/nathang15/go-tinystore/internal/node"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestAddNode(t *testing.T) {
-	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
+	nodes_config := node.LoadNodesConfig("../../configs/nodes.json")
 	node0 := nodes_config.Nodes["node0"]
 	node1 := nodes_config.Nodes["node1"]
 	node2 := nodes_config.Nodes["node2"]

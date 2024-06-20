@@ -15,9 +15,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nathang15/go-tinystore/node"
+	"github.com/nathang15/go-tinystore/internal/ch"
+	"github.com/nathang15/go-tinystore/internal/node"
 	"github.com/nathang15/go-tinystore/pb"
-	"github.com/nathang15/go-tinystore/ring"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -25,7 +25,7 @@ import (
 
 type Client struct {
 	Info  node.NodesInfo
-	Ring  *ring.Ring
+	Ring  *ch.Ring
 	vNode int
 }
 
@@ -36,7 +36,7 @@ type Payload struct {
 
 func InitClient(configFile string, virtualNodes int) *Client {
 	initNodesConfig := node.LoadNodesConfig(configFile)
-	ring := ring.InitRing(virtualNodes)
+	ring := ch.InitRing(virtualNodes)
 	var clusterConfig []*pb.Node
 
 	for _, node := range initNodesConfig.Nodes {
@@ -204,7 +204,7 @@ func InitCacheClient(server_host string, server_port int) (pb.CacheServiceClient
 }
 
 func LoadTLSCredentials() (credentials.TransportCredentials, error) {
-	pemServerCA, err := os.ReadFile("../certs/ca-cert.pem")
+	pemServerCA, err := os.ReadFile("../../certs/ca-cert.pem")
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 		return nil, fmt.Errorf("failed to add server CA's certificate")
 	}
 
-	clientCert, err := tls.LoadX509KeyPair("../certs/client-cert.pem", "../certs/client-key.pem")
+	clientCert, err := tls.LoadX509KeyPair("../../certs/client-cert.pem", "../../certs/client-key.pem")
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +255,6 @@ func (c *Client) StartClusterConfigWatcher() {
 					continue
 				}
 
-				log.Printf("Found leader: %s", res.Id)
 				leader = c.Info.Nodes[res.Id]
 				break
 			}
@@ -283,8 +282,6 @@ func (c *Client) StartClusterConfigWatcher() {
 			for _, nodecfg := range res.Nodes {
 				cluster_nodes[nodecfg.Id] = true
 			}
-
-			log.Printf("Cluster config: %v", res.Nodes)
 
 			for _, node := range c.Info.Nodes {
 				if _, ok := cluster_nodes[node.Id]; !ok {

@@ -20,6 +20,20 @@
             "restPort": 8080,
             "grpcPort": 5005,
             "HashId": ""
+        },
+        "node3": {
+            "id": "node3",
+            "host": "cacheserver3",
+            "restPort": 8080,
+            "grpcPort": 5005,
+            "HashId": ""
+        },
+        "node4": {
+            "id": "node4",
+            "host": "cacheserver4",
+            "restPort": 8080,
+            "grpcPort": 5005,
+            "HashId": ""
         }
     },
     "enable_https": true,

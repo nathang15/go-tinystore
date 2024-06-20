@@ -2,16 +2,13 @@ FROM golang:1.22.2
 
 WORKDIR /usr/src/app
 
-# Pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 COPY . .
 
-# Ensure the output binary is placed in /usr/src/app and is named tinystore
 RUN go build -o /usr/src/app/tinystore
 
-# Verify that the binary is created and has the correct permissions
 RUN ls -la /usr/src/app/tinystore
 
 CMD ["./tinystore", "-config", "configs/nodes.json", "-capacity", "100", "-verbose"]

@@ -1,4 +1,4 @@
-package ring
+package ch
 
 import (
 	"crypto/sha1"
@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/nathang15/go-tinystore/node"
+	"github.com/nathang15/go-tinystore/internal/node"
 )
 
 type Ring struct {

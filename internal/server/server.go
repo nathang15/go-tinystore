@@ -12,9 +12,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/nathang15/go-tinystore/node"
+	"github.com/nathang15/go-tinystore/internal/node"
 	"github.com/nathang15/go-tinystore/pb"
-	"github.com/nathang15/go-tinystore/store"
+	"github.com/nathang15/go-tinystore/pkg/store"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

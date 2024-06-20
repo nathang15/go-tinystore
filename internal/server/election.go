@@ -207,7 +207,7 @@ func (s *CacheServer) IsLeaderUp() bool {
 	leader, exists := s.nodesInfo.Nodes[s.leaderId]
 	if !exists {
 		s.logger.Infof("Leader node %s not found in nodesInfo", s.leaderId)
-		return true
+		return false
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
