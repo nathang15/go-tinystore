@@ -1,6 +1,6 @@
 # Distributed cache implementation 
 
-## ⚠️This is for learning purposes so the implementation might not be correct or performant. See credit
+## ⚠️This is for learning purposes so the implementation might not be correct, robust, or production applicable.
 
 ### Features:
 - LRU cache
