@@ -11,8 +11,11 @@
 - Therefore, it has no single point of failure as there is always guaranteed to have a leader.
 - 
 #### How to run:
-protoc service.proto --go_out=.     
-protoc --go-grpc_out=. service.proto
+- docker-compose build -> docker-compose up -> docker build -t client -f Dockerfile.client . -> docker run --network tinystore_default client
+
+#### Note to self:
+- protoc service.proto --go_out=.     
+- protoc --go-grpc_out=. service.proto
 
 ## Reference
 
