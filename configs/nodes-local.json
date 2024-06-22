@@ -1,0 +1,31 @@
+{
+    "nodes": {
+        "node0": {
+            "id": "node0",
+            "host": "localhost",
+            "restPort": 8080,
+            "grpcPort": 5005,
+            "HashId": ""
+        },
+        "node1": {
+            "id": "node1",
+            "host": "localhost",
+            "restPort": 8081,
+            "grpcPort": 5006,
+            "HashId": ""
+        },
+        "node2": {
+            "id": "node2",
+            "host": "localhost",
+            "restPort": 8082,
+            "grpcPort": 5007,
+            "HashId": ""
+        }
+    },
+    "enable_https": true,
+    "enable_client_auth": true,
+    "server_logfile": "tinystore.log",
+    "server_errfile": "tinystore.err",
+    "client_logfile": "tinystore-client.log",
+    "client_errfile": "tinystore-client.err"
+}

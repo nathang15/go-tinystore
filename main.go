@@ -1,10 +1,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/nathang15/go-tinystore/internal/server"
 )
@@ -23,7 +28,7 @@ func main() {
 		panic(err)
 	}
 
-	grpc_server, cache_server := server.InitCacheServer(*capacity, *config_file, *verbose)
+	grpc_server, cache_server := server.InitCacheServer(*capacity, *config_file, *verbose, server.DYNAMIC)
 
 	log.Printf("Running gRPC server on: %d", *grpc_port)
 	go grpc_server.Serve(listener)
@@ -35,7 +40,27 @@ func main() {
 	go cache_server.MonitorLeaderStatus()
 
 	log.Printf("Running REST API server on: %d", *rest_port)
-	cache_server.RunHttpServer(*rest_port)
+	http_server := cache_server.RunHttpServer(*rest_port)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		<-c
+
+		log.Printf("Shutting down gRPC server!")
+		grpc_server.Stop()
+
+		log.Printf("Shutting down HTTP server!")
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		if err := http_server.Shutdown(ctx); err != nil {
+			log.Printf("Server shutdown error: %s", err)
+		}
+		os.Exit(0)
+	}()
+
+	select {}
 
 	// ring.PrintBucketDistribution()
 }

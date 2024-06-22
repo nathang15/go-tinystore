@@ -5,9 +5,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"log"
+	"net"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,21 +27,27 @@ const (
 	PROD_DB = 0
 	TEST_DB = 1
 	SUCCESS = "OK"
+	DYNAMIC = "DYNAMIC"
 )
+
+type ServerConfig struct {
+	GrpcServer *grpc.Server
+	HttpServer *http.Server
+}
 
 type CacheServer struct {
 	// Ring            ring.Ring
-	router          *gin.Engine
-	cache           *store.LRU
-	logger          *zap.SugaredLogger
-	nodesInfo       node.NodesInfo
-	leaderId        string
-	nodeId          string
-	groupId         string
+	router    *gin.Engine
+	cache     *store.LRU
+	logger    *zap.SugaredLogger
+	nodesInfo node.NodesInfo
+	leaderId  string
+	nodeId    string
+	// groupId         string
 	shutdownChannel chan bool
 	decisionChannel chan string
-	mutex           sync.Mutex
-	electionStatus  bool
+	// mutex           sync.Mutex
+	electionStatus bool
 	pb.UnimplementedCacheServiceServer
 }
 
@@ -49,10 +56,24 @@ type Pair struct {
 	Value string `json:"value"`
 }
 
-func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Server, *CacheServer) {
+func InitCacheServer(capacity int, configFile string, verbose bool, nodeId string) (*grpc.Server, *CacheServer) {
 	sugaredLogger := GetSugaredZapLogger(verbose)
 	nodesInfo := node.LoadNodesConfig(configFile)
-	nodeId := node.GetCurrentNodeId(nodesInfo)
+	var finNodeId string
+	if nodeId == DYNAMIC {
+		log.Printf("passed node id: %s", nodeId)
+		finNodeId = node.GetCurrentNodeId(nodesInfo)
+		log.Printf("final node id: %s", finNodeId)
+		if _, ok := nodesInfo.Nodes[finNodeId]; !ok {
+			host, _ := os.Hostname()
+			nodesInfo.Nodes[finNodeId] = node.InitNode(finNodeId, host, 8080, 5005)
+		}
+	} else {
+		finNodeId = nodeId
+		if _, ok := nodesInfo.Nodes[finNodeId]; !ok {
+			panic("Node not found in config file")
+		}
+	}
 
 	if _, ok := nodesInfo.Nodes[nodeId]; !ok {
 		host, _ := os.Hostname()
@@ -69,7 +90,8 @@ func InitCacheServer(capacity int, configFile string, verbose bool) (*grpc.Serve
 		cache:           &lru,
 		logger:          sugaredLogger,
 		nodesInfo:       nodesInfo,
-		nodeId:          nodeId,
+		nodeId:          finNodeId,
+		leaderId:        NO_LEADER,
 		decisionChannel: make(chan string, 1),
 	}
 
@@ -184,9 +206,20 @@ func GetSugaredZapLogger(verbose bool) *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
-func (s *CacheServer) RunHttpServer(port int) {
-	s.logger.Infof("HTTP server running on port %d", port)
-	s.router.Run(fmt.Sprintf(":%d", port))
+func (s *CacheServer) RunHttpServer(port int) *http.Server {
+	addr := fmt.Sprintf(":%d", port)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: s.router,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Printf("listen: %s\n", err)
+		}
+	}()
+
+	return srv
 }
 
 func (s *CacheServer) Get(ctx context.Context, req *pb.GetRequest) (*pb.GetResponse, error) {
@@ -230,7 +263,7 @@ func (s *CacheServer) ServerInitCacheClient(serverHost string, serverPort int) (
 
 func (s *CacheServer) RegisterNodeInternal() {
 	s.logger.Infof("attempting to register %s with cluster", s.nodeId)
-	localNode, _ := s.nodesInfo.Nodes[s.nodeId]
+	localNode := s.nodesInfo.Nodes[s.nodeId]
 	for _, node := range s.nodesInfo.Nodes {
 		if node.Id == s.nodeId {
 			continue
@@ -258,4 +291,38 @@ func (s *CacheServer) RegisterNodeInternal() {
 
 		return
 	}
+}
+
+func CreateAndRunAllFromConfig(capacity int, configFile string, verbose bool) []ServerConfig {
+	config := node.LoadNodesConfig(configFile)
+
+	var components []ServerConfig
+
+	for _, nodeInfo := range config.Nodes {
+		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", nodeInfo.GrpcPort))
+		if err != nil {
+			panic(err)
+		}
+
+		// get new grpc id server
+		grpcServer, cacheServer := InitCacheServer(
+			capacity,
+			configFile,
+			verbose,
+			nodeInfo.Id,
+		)
+
+		go grpcServer.Serve(listener)
+
+		cacheServer.RegisterNodeInternal()
+
+		cacheServer.RunElection()
+
+		go cacheServer.MonitorLeaderStatus()
+
+		httpServer := cacheServer.RunHttpServer(int(nodeInfo.RestPort))
+
+		components = append(components, ServerConfig{GrpcServer: grpcServer, HttpServer: httpServer})
+	}
+	return components
 }

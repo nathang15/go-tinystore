@@ -88,7 +88,7 @@ func TestAddWithVNode(t *testing.T) {
 }
 
 func TestRemoveNode(t *testing.T) {
-	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
+	nodes_config := node.LoadNodesConfig("../../configs/nodes.json")
 	node0 := nodes_config.Nodes["node0"]
 	node1 := nodes_config.Nodes["node1"]
 	node2 := nodes_config.Nodes["node2"]
@@ -165,7 +165,7 @@ func getPrefix(s string) string {
 }
 
 func TestGet(t *testing.T) {
-	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
+	nodes_config := node.LoadNodesConfig("../../configs/nodes.json")
 	node0 := nodes_config.Nodes["node0"]
 	node1 := nodes_config.Nodes["node1"]
 	node2 := nodes_config.Nodes["node2"]
@@ -206,7 +206,7 @@ func TestGet(t *testing.T) {
 
 func TestGetWithVNode(t *testing.T) {
 	// Load the nodes configuration from the JSON file
-	nodes_config := node.LoadNodesConfig("../configs/nodes.json")
+	nodes_config := node.LoadNodesConfig("../../configs/nodes.json")
 	node0 := nodes_config.Nodes["node0"]
 	node1 := nodes_config.Nodes["node1"]
 	node2 := nodes_config.Nodes["node2"]

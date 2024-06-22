@@ -24,9 +24,10 @@ import (
 )
 
 type Client struct {
-	Info  node.NodesInfo
-	Ring  *ch.Ring
-	vNode int
+	Info    node.NodesInfo
+	Ring    *ch.Ring
+	vNode   int
+	CertDir string
 }
 
 type Payload struct {
@@ -34,13 +35,13 @@ type Payload struct {
 	Value string `json:"value"`
 }
 
-func InitClient(configFile string, virtualNodes int) *Client {
+func InitClient(cert string, configFile string, virtualNodes int) *Client {
 	initNodesConfig := node.LoadNodesConfig(configFile)
 	ring := ch.InitRing(virtualNodes)
 	var clusterConfig []*pb.Node
 
 	for _, node := range initNodesConfig.Nodes {
-		c, err := InitCacheClient(node.Host, int(node.GrpcPort))
+		c, err := InitCacheClient(cert, node.Host, int(node.GrpcPort))
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
@@ -71,7 +72,7 @@ func InitClient(configFile string, virtualNodes int) *Client {
 				ring.Add(virtualNodeID, n.Host, n.RestPort, n.GrpcPort)
 			}
 		}
-		c, err := InitCacheClient(n.Host, int(n.GrpcPort))
+		c, err := InitCacheClient(cert, n.Host, int(n.GrpcPort))
 		if err != nil {
 			log.Printf("error: %v", err)
 			continue
@@ -79,7 +80,7 @@ func InitClient(configFile string, virtualNodes int) *Client {
 		infoMap[n.Id].SetGrpcClient(c)
 	}
 	info := node.NodesInfo{Nodes: infoMap}
-	return &Client{Info: info, Ring: ring, vNode: virtualNodes}
+	return &Client{Info: info, Ring: ring, vNode: virtualNodes, CertDir: cert}
 }
 
 func (c *Client) Get(key string) (string, error) {
@@ -109,7 +110,7 @@ func (c *Client) GetForGrpc(key string) (string, error) {
 	nodeInfo := c.Info.Nodes[physicalNodeId]
 
 	if nodeInfo.GrpcClient == nil {
-		client, err := InitCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		client, err := InitCacheClient(c.CertDir, nodeInfo.Host, int(nodeInfo.GrpcPort))
 		if err != nil {
 			return "", fmt.Errorf("error initiating gRPC client: %s", err)
 		}
@@ -148,7 +149,8 @@ func (c *Client) Put(key string, value string) error {
 		return fmt.Errorf("error creating POST request: %s", err)
 	}
 
-	_, err = new(http.Client).Do(req)
+	res, err := new(http.Client).Do(req)
+	defer res.Body.Close()
 	if err != nil {
 		return fmt.Errorf("error sending POST request: %s", err)
 	}
@@ -161,7 +163,7 @@ func (client *Client) PutForGrpc(key string, value string) error {
 	nodeInfo := client.Info.Nodes[physicalNodeId]
 
 	if nodeInfo.GrpcClient == nil {
-		client, err := InitCacheClient(nodeInfo.Host, int(nodeInfo.GrpcPort))
+		client, err := InitCacheClient(client.CertDir, nodeInfo.Host, int(nodeInfo.GrpcPort))
 		if err != nil {
 			return fmt.Errorf("error initiating gRPC client: %s", err)
 		}
@@ -178,8 +180,8 @@ func (client *Client) PutForGrpc(key string, value string) error {
 	return nil
 }
 
-func InitCacheClient(server_host string, server_port int) (pb.CacheServiceClient, error) {
-	creds, err := LoadTLSCredentials()
+func InitCacheClient(cert string, server_host string, server_port int) (pb.CacheServiceClient, error) {
+	creds, err := LoadTLSCredentials(cert)
 	if err != nil {
 		log.Fatalf("failed to create credentials: %v", err)
 	}
@@ -203,8 +205,8 @@ func InitCacheClient(server_host string, server_port int) (pb.CacheServiceClient
 	return pb.NewCacheServiceClient(conn), nil
 }
 
-func LoadTLSCredentials() (credentials.TransportCredentials, error) {
-	pemServerCA, err := os.ReadFile("../../certs/ca-cert.pem")
+func LoadTLSCredentials(cert string) (credentials.TransportCredentials, error) {
+	pemServerCA, err := os.ReadFile(fmt.Sprintf("%s/ca-cert.pem", cert))
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +216,10 @@ func LoadTLSCredentials() (credentials.TransportCredentials, error) {
 		return nil, fmt.Errorf("failed to add server CA's certificate")
 	}
 
-	clientCert, err := tls.LoadX509KeyPair("../../certs/client-cert.pem", "../../certs/client-key.pem")
+	clientCert, err := tls.LoadX509KeyPair(
+		fmt.Sprintf("%s/client-cert.pem", cert),
+		fmt.Sprintf("%s/client-key.pem", cert),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -235,6 +240,10 @@ func (c *Client) StartClusterConfigWatcher() {
 			for {
 				randomNode := node.GetRandom(c.Ring.Nodes)
 
+				if len(attempted) == len(c.Ring.Nodes) {
+					log.Fatalf("Unable to connect to any nodes!")
+				}
+
 				if _, ok := attempted[randomNode.Id]; ok {
 					log.Printf("Skipping visited node %s...", randomNode.Id)
 					continue
@@ -242,7 +251,7 @@ func (c *Client) StartClusterConfigWatcher() {
 
 				attempted[randomNode.Id] = true
 
-				client, err := InitCacheClient(randomNode.Host, int(randomNode.GrpcPort))
+				client, err := InitCacheClient(c.CertDir, randomNode.Host, int(randomNode.GrpcPort))
 				if err != nil {
 					continue
 				}
@@ -267,7 +276,7 @@ func (c *Client) StartClusterConfigWatcher() {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
 
-			client, err := InitCacheClient(leader.Host, int(leader.GrpcPort))
+			client, err := InitCacheClient(c.CertDir, leader.Host, int(leader.GrpcPort))
 			if err != nil {
 				continue
 			}

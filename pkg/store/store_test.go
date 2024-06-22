@@ -3,6 +3,7 @@ package store
 import (
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestSmallCache(t *testing.T) {
@@ -69,4 +70,19 @@ func AssertErrorNoNil(t *testing.T, err error) {
 	if err == nil {
 		t.Errorf("Found element in cache when it should have been evicted")
 	}
+}
+
+func TestCacheWriteThroughput(t *testing.T) {
+	capacity := 100
+	num_puts := 10000000
+	lru := Init(capacity)
+	start := time.Now()
+	for i := 0; i < num_puts; i++ {
+		v := strconv.Itoa(i)
+		lru.Put(v, v)
+	}
+	end := time.Since(start)
+	endSeconds := end.Seconds()
+	t.Logf("Time to write 10M puts: %.2f seconds", endSeconds)
+	t.Logf("LRU Cache write throughput: %.2f puts/second", float64(num_puts)/endSeconds)
 }
