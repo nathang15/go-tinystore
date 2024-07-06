@@ -18,8 +18,6 @@ const (
 // REST TESTS
 
 func Test10kPutsNoVnode(t *testing.T) {
-	// capacity := 100
-	// verbose := true
 	vNode := 0
 	certdir, _ := filepath.Abs(CLIENT_CERT_DIR)
 	configPath, _ := filepath.Abs(CONFIG_PATH)
@@ -54,8 +52,6 @@ func Test10kPutsNoVnode(t *testing.T) {
 }
 
 func Test10kPuts(t *testing.T) {
-	// capacity := 100
-	// verbose := true
 	vNode := 10
 	certdir, _ := filepath.Abs(CLIENT_CERT_DIR)
 	configPath, _ := filepath.Abs(CONFIG_PATH)
@@ -90,8 +86,6 @@ func Test10kPuts(t *testing.T) {
 }
 
 func Test50kPuts(t *testing.T) {
-	// capacity := 100
-	// verbose := true
 	vNode := 10
 	certdir, _ := filepath.Abs(CLIENT_CERT_DIR)
 	configPath, _ := filepath.Abs(CONFIG_PATH)
@@ -125,37 +119,8 @@ func Test50kPuts(t *testing.T) {
 	t.Logf("Cache misses: %d/50,000 (%f%%)", int(miss), miss/50000)
 }
 
-// func TestLargeVolumeConcurrentPuts(t *testing.T) {
-// 	largeValue := make([]byte, 1024*1024) // 1MB value
-// 	c := InitClient("../configs/nodes.json", 100)
-// 	c.StartClusterConfigWatcher()
-// 	var wg sync.WaitGroup
-// 	var mutex sync.Mutex
-// 	miss := 0.0
-// 	for i := 0; i < 10; i++ {
-// 		wg.Add(1)
-// 		go func() {
-// 			defer wg.Done()
-// 			for j := 1; j <= 1000; j++ {
-// 				v := strconv.Itoa(j)
-// 				err := c.Put(v, string(largeValue))
-// 				if err != nil {
-// 					t.Logf("Error putting key %s: %v", v, err)
-// 					mutex.Lock()
-// 					miss += 1
-// 					mutex.Unlock()
-// 				}
-// 			}
-// 		}()
-// 	}
-// 	wg.Wait()
-// 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
-// }
-
 // GRPC TESTS
 func Test10kGRPCPutsNoVnode(t *testing.T) {
-	// capacity := 100
-	// verbose := true
 	vNode := 0
 	certdir, _ := filepath.Abs(CLIENT_CERT_DIR)
 	configPath, _ := filepath.Abs(CONFIG_PATH)
@@ -189,8 +154,6 @@ func Test10kGRPCPutsNoVnode(t *testing.T) {
 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
 }
 func Test10kGRPCPuts(t *testing.T) {
-	// capacity := 100
-	// verbose := true
 	vNode := 10
 	certdir, _ := filepath.Abs(CLIENT_CERT_DIR)
 	configPath, _ := filepath.Abs(CONFIG_PATH)
@@ -225,8 +188,6 @@ func Test10kGRPCPuts(t *testing.T) {
 }
 
 func Test50kGRPCPuts(t *testing.T) {
-	// capacity := 100
-	// verbose := true
 	vNode := 10
 	certdir, _ := filepath.Abs(CLIENT_CERT_DIR)
 	configPath, _ := filepath.Abs(CONFIG_PATH)
@@ -259,30 +220,3 @@ func Test50kGRPCPuts(t *testing.T) {
 	t.Logf("Time to complete 50k puts with GRPC, 10 virtual nodes: %s", end)
 	t.Logf("Cache misses: %d/50,000 (%f%%)", int(miss), miss/50000)
 }
-
-// func TestLargeVolumeConcurrentGRPCPuts(t *testing.T) {
-// 	largeValue := make([]byte, 1024*1024) // 1MB value
-// 	c := InitClient("../configs/nodes.json", 100)
-// 	c.StartClusterConfigWatcher()
-// 	var wg sync.WaitGroup
-// 	var mutex sync.Mutex
-// 	miss := 0.0
-// 	for i := 0; i < 10; i++ {
-// 		wg.Add(1)
-// 		go func() {
-// 			defer wg.Done()
-// 			for j := 1; j <= 1000; j++ {
-// 				v := strconv.Itoa(j)
-// 				err := c.PutForGrpc(v, string(largeValue))
-// 				if err != nil {
-// 					t.Logf("Error putting key %s: %v", v, err)
-// 					mutex.Lock()
-// 					miss += 1
-// 					mutex.Unlock()
-// 				}
-// 			}
-// 		}()
-// 	}
-// 	wg.Wait()
-// 	t.Logf("Cache misses: %d/10,000 (%f%%)", int(miss), miss/10000)
-// }
