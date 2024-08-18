@@ -3,12 +3,12 @@
 ## ⚠️This is for learning purposes so the implementation might not be correct, robust, or production applicable.
 
 ### Features:
-- LRU cache
-- Consistent hashing implementation uses the concept of virtual nodes. Devs can specify the virtual nodes size when initializing the consistent hash ring. 
+- Thread-safe LRU cache with O(1) Get/Put and Evict
+- Consistent hashing implementation uses the concept of virtual nodes for better tolerance. Devs can specify the virtual nodes size when initializing the consistent hash ring. Use to uniformly distribute requests and minimize required re-mappings when servers join/leave the cluster. Client automatically monitors the cluster state stored on the leader node for any changes and updates its consistent hashing ring.
 - Note that this is a very unfair distribution for virtual nodes size lesser than 100. The distribution becomes gradually consistent when virtual nodes size are increased, it seems most consistent if the amount of vnodes is greater than 700. See [output.txt](https://github.com/nathang15/go-tinystore/blob/main/output.txt)
-- Bully algorithm for leader election of cluster
-- Dynamic node can join/leave cluster and every other config in consistent hashing and leader will be updated instanteneously. Therefore, it has no single point of failure as there is always guaranteed to have a leader.
-
+- Bully algorithm for leader election of cluster. Follower nodes monitor heartbeat of leader and run a new election if it goes down
+- Dynamic node can join/leave cluster and every other config in consistent hashing and leader will be updated accordingly. Therefore, it has no single point of failure as there is always guaranteed to have a leader.
+- New nodes join the cluster by first registering themselves with the cluster, which is done by sending identifying information (hostname, port, etc.) to each of the cluster's original predefined nodes (i.e. nodes defined in the config file) until one returns a successful response. When an existing node receives this registration request from the new node, it will add the new node to its in-memory list of nodes and send this updated list to all other nodes. The leader node monitors heartbeats of all nodes in the cluster, keeping a list of active reachable nodes in the cluster updated. Clients monitor the leader's cluster config for changes and updates their consistent hashing ring.
 ### Performance:
 #### With Docker containerized cache servers
 ```
