@@ -1,7 +1,4 @@
 # Distributed cache implementation 
-
-## ⚠️This is for learning purposes so the implementation might not be correct, robust, or production applicable.
-
 ### Features:
 - Thread-safe LRU cache with O(1) Get/Put and Evict
 - Consistent hashing implementation uses the concept of virtual nodes for better tolerance. Devs can specify the virtual nodes size when initializing the consistent hash ring. Use to uniformly distribute requests and minimize required re-mappings when servers join/leave the cluster. Client automatically monitors the cluster state stored on the leader node for any changes and updates its consistent hashing ring.
